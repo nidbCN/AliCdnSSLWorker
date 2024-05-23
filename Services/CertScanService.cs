@@ -53,12 +53,12 @@ public class CertScanService
         var dirList = dir.GetDirectories();
         foreach (var subDir in dirList)
         {
-
-            var certFile = new FileInfo(Path.Combine(dir.FullName, "cert.pem"));
-            var privKeyFile = new FileInfo(Path.Combine(dir.FullName, "privkey.pem"));
+            var certFile = new FileInfo(Path.Combine(subDir.FullName, "cert.pem"));
+            var privKeyFile = new FileInfo(Path.Combine(subDir.FullName, "privkey.pem"));
 
             if (!certFile.Exists || !privKeyFile.Exists)
             {
+		_logger.LogWarning("Can not found cert or private key file, skip {d}", subDir.Name);
                 continue;
             }
 
@@ -70,6 +70,7 @@ public class CertScanService
 
             if (line is null || !line.Contains("-----BEGIN CERTIFICATE-----"))
             {
+		_logger.LogWarning("Can not found BEGIN CERT flag, skip.");
                 continue;
             }
 
@@ -93,13 +94,18 @@ public class CertScanService
             if (commonName is null || !_domainList.Contains(commonName))
             {
                 // 不监听此域名
+		_logger.LogInformation("Domain {d} is not in list, skip.", commonName);
                 continue;
             }
+
+	    _logger.LogInformation("Scan cert for domain {d}", commonName);
 
             using var keyReader = new StreamReader(privKeyFile.OpenRead());
             var keyPEM = await keyReader.ReadToEndAsync();
 
-            var certPEM = stringBuilder.Insert(0, CERT_BEGIN).Append(CERT_END).ToString();
+            var certPEM = stringBuilder.Insert(0, CERT_BEGIN+"\n").Append("\n"+CERT_END).ToString();
+
+	    _logger.LogInformation("Success load cert, cert {c}", certPEM);
 
             if (_certList.ContainsKey(commonName))
             {

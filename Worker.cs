@@ -10,6 +10,7 @@ public class Worker(ILogger<Worker> logger,
     CertScanService certScanService) : BackgroundService
 {
     private readonly ILogger<Worker> _logger = logger;
+    private readonly CertConfig _config = options.Value;
     private readonly AliCdnService _aliCdnService = aliCdnService;
     private readonly CertScanService _certScanService = certScanService;
     private readonly TimeSpan _interval = TimeSpan.FromHours(options.Value.IntervalHour);
@@ -24,18 +25,25 @@ public class Worker(ILogger<Worker> logger,
                 continue;
             }
 
-            foreach (var info in infos)
+            var infoDict = infos
+                .ToDictionary(i => i.CertCommonName, i => i.CertExpireTime);
+
+            foreach (var domain in _config.DomainList)
             {
-                var domain = info.CertCommonName;
-                var expireTime = info.CertExpireTime - DateTime.Now;
-                if (expireTime > _interval)
+                if (infoDict.TryGetValue(domain, out var time))
                 {
-                    _logger.LogInformation("Domain {cn} has {d}d,{h}hr,{m}min expire.No need refresh.", domain, expireTime.Days, expireTime.Hours, expireTime.Minutes);
-                    continue;
+                    var timeToExpiry = time - DateTime.Now;
+
+                    if (timeToExpiry > _interval)
+                    {
+                        _logger.LogInformation("Domain {cn} has {d}d,{h}hr,{m}min expire.No need refresh.", domain, timeToExpiry.Days, timeToExpiry.Hours, timeToExpiry.Minutes);
+                        continue;
+                    }
+
+                    _logger.LogInformation("Domain {cn} has {d}d,{h}hr,{m}min expire.Upload new.", domain, timeToExpiry.Days, timeToExpiry.Hours, timeToExpiry.Minutes);
                 }
 
-                _logger.LogInformation("Domain {cn} has {d}d,{h}hr,{m}min expire.Upload new.", domain, expireTime.Days, expireTime.Hours, expireTime.Minutes);
-
+		_logger.LogInformation("Update domain {d}", domain);
                 var certPair = _certScanService.GetCertByDomain(domain);
                 if (certPair is null)
                 {
@@ -45,6 +53,7 @@ public class Worker(ILogger<Worker> logger,
 
                 if (_aliCdnService.TryUploadCert(domain, certPair.Value))
                     _logger.LogInformation("Success upload cert for {d}.", domain);
+
             }
 
             await Task.Delay(_interval, stoppingToken);
