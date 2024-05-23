@@ -1,8 +1,7 @@
 ﻿using Microsoft.Extensions.Options;
-using AlibabaCloud.OpenApiClient.Models;
 using AlibabaCloud.SDK.Cdn20180510.Models;
 using AlibabaCloud.TeaUtil.Models;
-using System.Text.Json;
+using AliCdnSSLWorker.Configs;
 using Tea;
 using AliCdnSSLWorker.Models;
 
@@ -15,7 +14,7 @@ public class AliCdnService
     private readonly Aliyun.Credentials.Client _credentialClient;
     private readonly RuntimeOptions _runtimeOptions = new();
 
-    public AliCdnService(ILogger<AliCdnService> logger, IOptions<Config> options)
+    public AliCdnService(ILogger<AliCdnService> logger, IOptions<ApiConfig> options)
     {
         ArgumentNullException.ThrowIfNull(options);
 
@@ -79,8 +78,10 @@ public class AliCdnService
         return false;
     }
 
-    public bool TryUploadCert(string domainName, string cert, string privateKey)
+    public bool TryUploadCert(string domainName, (string, string) certPair)
     {
+        var (cert, privateKey) = certPair;
+
         var req = new SetCdnDomainSSLCertificateRequest
         {
             DomainName = domainName,

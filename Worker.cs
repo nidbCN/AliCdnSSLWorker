@@ -1,35 +1,53 @@
+using AliCdnSSLWorker.Configs;
 using AliCdnSSLWorker.Services;
-using System.Text.Json;
+using Microsoft.Extensions.Options;
 
 namespace AliCdnSSLWorker;
 
-public class Worker : BackgroundService
+public class Worker(ILogger<Worker> logger,
+    IOptions<CertConfig> options,
+    AliCdnService aliCdnService,
+    CertScanService certScanService) : BackgroundService
 {
-
-    private readonly ILogger<Worker> _logger;
-    private readonly AliCdnService _service;
-
-    public Worker(ILogger<Worker> logger, AliCdnService aliCdnService)
-    {
-        _logger = logger;
-        _service = aliCdnService;
-    }
+    private readonly ILogger<Worker> _logger = logger;
+    private readonly AliCdnService _aliCdnService = aliCdnService;
+    private readonly CertScanService _certScanService = certScanService;
+    private readonly TimeSpan _interval = TimeSpan.FromHours(options.Value.IntervalHour);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            if (_logger.IsEnabled(LogLevel.Information))
+            if (!_aliCdnService.TryGetHttpsCerts(out var infos))
             {
-                _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-                var _ = _service.TryGetHttpsCerts(out var infos);
-
-                foreach (var info in infos)
-                {
-                    await Console.Out.WriteLineAsync(JsonSerializer.Serialize(info));
-                }
+                _logger.LogError("Can not get CDN cert infos.");
+                continue;
             }
-            await Task.Delay(100000, stoppingToken);
+
+            foreach (var info in infos)
+            {
+                var domain = info.CertCommonName;
+                var expireTime = info.CertExpireTime - DateTime.Now;
+                if (expireTime > _interval)
+                {
+                    _logger.LogInformation("Domain {cn} has {d}d,{h}hr,{m}min expire.No need refresh.", domain, expireTime.Days, expireTime.Hours, expireTime.Minutes);
+                    continue;
+                }
+
+                _logger.LogInformation("Domain {cn} has {d}d,{h}hr,{m}min expire.Upload new.", domain, expireTime.Days, expireTime.Hours, expireTime.Minutes);
+
+                var certPair = _certScanService.GetCertByDomain(domain);
+                if (certPair is null)
+                {
+                    _logger.LogError("Can not found cert for {d}", domain);
+                    continue;
+                }
+
+                if (_aliCdnService.TryUploadCert(domain, certPair.Value))
+                    _logger.LogInformation("Success upload cert for {d}.", domain);
+            }
+
+            await Task.Delay(_interval, stoppingToken);
         }
     }
 }
