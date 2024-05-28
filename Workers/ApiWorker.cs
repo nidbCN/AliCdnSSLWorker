@@ -1,16 +1,36 @@
-﻿using AliCdnSSLWorker.Services;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using AliCdnSSLWorker.Configs;
+using AliCdnSSLWorker.Services;
+using Microsoft.Extensions.Options;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AliCdnSSLWorker.Workers;
-public class ApiWorker(ILogger<ApiWorker> logger, Worker worker) : BackgroundService
+public class ApiWorker(ILogger<ApiWorker> logger,
+    IOptions<CertConfig> options,
+    AliCdnService aliCdnService,
+    CertScanService certScanService
+    ) : BackgroundService
 {
-    private readonly ILogger<ApiWorker> logger;
-    private readonly Worker _worker = worker;
+    private readonly ILogger<ApiWorker> _logger = logger;
+    private readonly AliCdnService _aliCdnService = aliCdnService;
+    private readonly CertConfig _config = options.Value;
+    private readonly CertScanService _certScanService = certScanService;
+
+    private void Update()
+    {
+        foreach (var domain in _config.DomainList)
+        {
+            _logger.LogInformation("Update domain {d}", domain);
+            var certPair = _certScanService.GetCertByDomain(domain);
+            if (certPair is null)
+            {
+                _logger.LogError("Can not found cert for {d}", domain);
+                continue;
+            }
+
+            if (_aliCdnService.TryUploadCert(domain, certPair.Value))
+                _logger.LogInformation("Success upload cert for {d}.", domain);
+        }
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -18,20 +38,14 @@ public class ApiWorker(ILogger<ApiWorker> logger, Worker worker) : BackgroundSer
         listener.Prefixes.Add("http://0.0.0.0:5057/force_refresh");
 
         listener.Start();
-        logger.LogInformation("Api server listen on 0.0.0.0:5057.");
+        _logger.LogInformation("Api server listen on 0.0.0.0:5057.");
 
         while (true)
         {
             var ctx = await listener.GetContextAsync();
+            Update();
             using var resp = ctx.Response;
-            if (_worker.TryUpdate())
-            {
-                resp.StatusCode = (int)HttpStatusCode.OK;
-            }
-            else
-            {
-                resp.StatusCode = (int)HttpStatusCode.InternalServerError;
-            }
+            resp.StatusCode = (int)HttpStatusCode.OK;
         }
     }
 }
