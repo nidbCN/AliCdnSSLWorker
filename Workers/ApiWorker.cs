@@ -35,7 +35,7 @@ public class ApiWorker(ILogger<ApiWorker> logger,
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var listener = new HttpListener();
-        listener.Prefixes.Add("http://0.0.0.0:5057/force_refresh");
+        listener.Prefixes.Add("http://0.0.0.0:5057/force_refresh/");
 
         listener.Start();
         _logger.LogInformation("Api server listen on 0.0.0.0:5057.");
