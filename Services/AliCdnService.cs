@@ -85,6 +85,7 @@ public class AliCdnService
         var req = new SetCdnDomainSSLCertificateRequest
         {
             DomainName = domainName,
+            CertType = "upload",
             SSLProtocol = "on",
             SSLPub = cert,
             SSLPri = privateKey,
