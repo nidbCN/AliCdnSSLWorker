@@ -32,7 +32,7 @@ public class ApiWorker(ILogger<ApiWorker> logger,
         }
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var listener = new HttpListener();
         listener.Prefixes.Add("http://0.0.0.0:5057/force_refresh/");
@@ -42,7 +42,7 @@ public class ApiWorker(ILogger<ApiWorker> logger,
 
         while (true)
         {
-            var ctx = await listener.GetContextAsync();
+            var ctx = listener.GetContext();
             Update();
             using var resp = ctx.Response;
             resp.StatusCode = (int)HttpStatusCode.OK;
