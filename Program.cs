@@ -1,3 +1,4 @@
+using AliCdnSSLWorker.Clients;
 using AliCdnSSLWorker.Configs;
 using AliCdnSSLWorker.Services;
 using AliCdnSSLWorker.Workers;
@@ -10,11 +11,39 @@ builder.Services.Configure<AliCdnConfig>(
 builder.Services.Configure<CertConfig>(
     builder.Configuration.GetSection(nameof(CertConfig))
 );
+builder.Services.Configure<ApiConfig>(
+    builder.Configuration.GetSection(nameof(ApiConfig))
+);
 
+builder.Services.AddHttpClient<RefreshRequestClient>();
+builder.Services.AddSingleton<RefreshRequestService>();
 builder.Services.AddSingleton<AliCdnService>();
 builder.Services.AddSingleton<CertScanService>();
+
 builder.Services.AddHostedService<SSLWorker>();
 builder.Services.AddHostedService<ApiWorker>();
 
 var host = builder.Build();
+
+if (args.Length > 0)
+{
+    var logger = host.Services.GetRequiredService<ILogger<Program>>();
+
+    if (args[0] == "-r" || args[0] == "--refresh")
+    {
+        logger.LogWarning("Quick update mode. `-r` will request a refresh to running worker.");
+
+        var requestService = host.Services.GetRequiredService<RefreshRequestService>();
+        await requestService.Update();
+
+        logger.LogInformation("Request force refresh success.");
+    }
+    else
+    {
+        logger.LogInformation("Usage: AliCdnSSLWorker [options]\n"
+                              + "\t --refresh, -r \tRequest a refresh to running worker."
+                              + "Notes: other arguments will pass to .NET Host.");
+    }
+}
+
 host.Run();

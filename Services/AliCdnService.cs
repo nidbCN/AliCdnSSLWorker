@@ -4,6 +4,7 @@ using AlibabaCloud.TeaUtil.Models;
 using AliCdnSSLWorker.Configs;
 using Tea;
 using AliCdnSSLWorker.Models;
+using Aliyun.Credentials;
 
 namespace AliCdnSSLWorker.Services;
 
@@ -11,14 +12,13 @@ public class AliCdnService
 {
     private readonly ILogger<AliCdnService> _logger;
     private readonly AlibabaCloud.SDK.Cdn20180510.Client _apiClient;
-    private readonly Aliyun.Credentials.Client _credentialClient;
     private readonly RuntimeOptions _runtimeOptions = new();
 
     public AliCdnService(ILogger<AliCdnService> logger, IOptions<AliCdnConfig> options)
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        _credentialClient = new(new()
+        Client credentialClient = new(new()
         {
             AccessKeyId = options.Value.AccessKeyId,
             AccessKeySecret = options.Value.AccessKeySecret,
@@ -28,7 +28,7 @@ public class AliCdnService
         _apiClient = new(new()
         {
             Endpoint = options.Value.Endpoint,
-            Credential = _credentialClient,
+            Credential = credentialClient,
         });
 
         _logger = logger;

@@ -7,7 +7,7 @@
     <UserSecretsId>dotnet-AliCdnSSLWorker-69cd49e9-faf0-424c-980f-751b97c9a16a</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
-    <AssemblyVersion>6.0.1.1</AssemblyVersion>
+    <AssemblyVersion>6.0.2.1</AssemblyVersion>
     <FileVersion>6.0.1.1</FileVersion>
   </PropertyGroup>
 
@@ -16,6 +16,7 @@
     <PackageReference Include="Aliyun.Credentials" Version="1.3.3" />
     <PackageReference Include="Macross.Json.Extensions" Version="3.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.5" />
   </ItemGroup>
 </Project>
