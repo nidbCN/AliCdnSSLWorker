@@ -100,3 +100,9 @@ services:
 ```
 HTTP GET <IpAddress>:5057/force_refresh/
 ```
+
+或使用命令行参数 `--refresh` 或 `-r` 启动二进制发送更新指令，如：
+
+```bash
+sudo docker exec alicdn-ssl dotnet AliCdnSSLWorker.dll -r
+```
