@@ -24,10 +24,15 @@ builder.Services.AddHostedService<SSLWorker>();
 builder.Services.AddHostedService<ApiWorker>();
 
 var host = builder.Build();
+var logger = host.Services.GetRequiredService<ILogger<Program>>();
+
+logger.LogInformation("Welcome to {name} {version}",
+    typeof(Program).Assembly.GetName().Name,
+    typeof(Program).Assembly.GetName().Version);
 
 if (args.Length > 0)
 {
-    var logger = host.Services.GetRequiredService<ILogger<Program>>();
+
 
     if (args[0] == "-r" || args[0] == "--refresh")
     {
@@ -37,13 +42,13 @@ if (args.Length > 0)
         await requestService.Update();
 
         logger.LogInformation("Request force refresh success.");
+
+        return;
     }
-    else
-    {
-        logger.LogInformation("Usage: AliCdnSSLWorker [options]\n"
-                              + "\t --refresh, -r \tRequest a refresh to running worker."
-                              + "Notes: other arguments will pass to .NET Host.");
-    }
+
+    logger.LogInformation("Usage: AliCdnSSLWorker [options]\n"
+                          + "\t --refresh, -r \tRequest a refresh to running worker."
+                          + "Notes: other arguments will pass to .NET Host.");
 }
 
 host.Run();
