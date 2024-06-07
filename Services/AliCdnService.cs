@@ -14,7 +14,7 @@ public class AliCdnService
     private readonly Aliyun.Credentials.Client _credentialClient;
     private readonly RuntimeOptions _runtimeOptions = new();
 
-    public AliCdnService(ILogger<AliCdnService> logger, IOptions<ApiConfig> options)
+    public AliCdnService(ILogger<AliCdnService> logger, IOptions<AliCdnConfig> options)
     {
         ArgumentNullException.ThrowIfNull(options);
 

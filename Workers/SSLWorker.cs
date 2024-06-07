@@ -2,24 +2,21 @@ using AliCdnSSLWorker.Configs;
 using AliCdnSSLWorker.Services;
 using Microsoft.Extensions.Options;
 
-namespace AliCdnSSLWorker;
+namespace AliCdnSSLWorker.Workers;
 
-public class Worker(ILogger<Worker> logger,
+public class SSLWorker(ILogger<SSLWorker> logger,
     IOptions<CertConfig> options,
     AliCdnService aliCdnService,
     CertScanService certScanService) : BackgroundService
 {
-    private readonly ILogger<Worker> _logger = logger;
     private readonly CertConfig _config = options.Value;
-    private readonly AliCdnService _aliCdnService = aliCdnService;
-    private readonly CertScanService _certScanService = certScanService;
     private readonly TimeSpan _interval = TimeSpan.FromHours(options.Value.IntervalHour);
 
     public bool TryUpdate()
     {
-        if (!_aliCdnService.TryGetHttpsCerts(out var infos))
+        if (!aliCdnService.TryGetHttpsCerts(out var infos))
         {
-            _logger.LogError("Can not get CDN cert infos.");
+            logger.LogError("Can not get CDN cert infos.");
             return false;
         }
 
@@ -34,23 +31,23 @@ public class Worker(ILogger<Worker> logger,
 
                 if (timeToExpiry > _interval)
                 {
-                    _logger.LogInformation("Domain {cn} has {d}d,{h}hr,{m}min expire.No need refresh.", domain, timeToExpiry.Days, timeToExpiry.Hours, timeToExpiry.Minutes);
+                    logger.LogInformation("Domain {cn} has {d}d,{h}hr,{m}min expire.No need refresh.", domain, timeToExpiry.Days, timeToExpiry.Hours, timeToExpiry.Minutes);
                     continue;
                 }
 
-                _logger.LogInformation("Domain {cn} has {d}d,{h}hr,{m}min expire.Upload new.", domain, timeToExpiry.Days, timeToExpiry.Hours, timeToExpiry.Minutes);
+                logger.LogInformation("Domain {cn} has {d}d,{h}hr,{m}min expire.Upload new.", domain, timeToExpiry.Days, timeToExpiry.Hours, timeToExpiry.Minutes);
             }
 
-            _logger.LogInformation("Update domain {d}", domain);
-            var certPair = _certScanService.GetCertByDomain(domain);
+            logger.LogInformation("Update domain {d}", domain);
+            var certPair = certScanService.GetCertByDomain(domain);
             if (certPair is null)
             {
-                _logger.LogError("Can not found cert for {d}", domain);
+                logger.LogError("Can not found cert for {d}", domain);
                 continue;
             }
 
-            if (_aliCdnService.TryUploadCert(domain, certPair.Value))
-                _logger.LogInformation("Success upload cert for {d}.", domain);
+            if (aliCdnService.TryUploadCert(domain, certPair.Value))
+                logger.LogInformation("Success upload cert for {d}.", domain);
 
         }
 

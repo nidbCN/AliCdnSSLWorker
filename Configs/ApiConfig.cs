@@ -1,8 +1,11 @@
-﻿namespace AliCdnSSLWorker.Configs;
+﻿using System.Net;
+using System.Text.Json.Serialization;
 
+namespace AliCdnSSLWorker.Configs;
 public record ApiConfig
 {
-    public required string AccessKeyId { get; init; }
-    public required string AccessKeySecret { get; init; }
-    public required string Endpoint { get; init; }
+    public required uint Port { get; init; } = 5057;
+
+    [JsonConverter(typeof(JsonIPAddressConverter))]
+    public required IPAddress IpAddress { get; init; } = IPAddress.Any;
 }

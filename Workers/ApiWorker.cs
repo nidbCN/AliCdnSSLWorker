@@ -5,47 +5,59 @@ using System.Net;
 
 namespace AliCdnSSLWorker.Workers;
 public class ApiWorker(ILogger<ApiWorker> logger,
-    IOptions<CertConfig> options,
+    IOptions<CertConfig> certOptions,
+    IOptions<ApiConfig> apiOptions,
     AliCdnService aliCdnService,
     CertScanService certScanService
     ) : BackgroundService
 {
-    private readonly ILogger<ApiWorker> _logger = logger;
-    private readonly AliCdnService _aliCdnService = aliCdnService;
-    private readonly CertConfig _config = options.Value;
-    private readonly CertScanService _certScanService = certScanService;
+    private readonly CertConfig _certConfig = certOptions.Value;
+    private readonly ApiConfig _apiConfig = apiOptions.Value;
 
     private void Update()
     {
-        foreach (var domain in _config.DomainList)
+        foreach (var domain in _certConfig.DomainList)
         {
-            _logger.LogInformation("Update domain {d}", domain);
-            var certPair = _certScanService.GetCertByDomain(domain);
+            logger.LogInformation("Update domain {d}", domain);
+            var certPair = certScanService.GetCertByDomain(domain);
             if (certPair is null)
             {
-                _logger.LogError("Can not found cert for {d}", domain);
+                logger.LogError("Can not found cert for {d}", domain);
                 continue;
             }
 
-            if (_aliCdnService.TryUploadCert(domain, certPair.Value))
-                _logger.LogInformation("Success upload cert for {d}.", domain);
+            if (aliCdnService.TryUploadCert(domain, certPair.Value))
+                logger.LogInformation("Success upload cert for {d}.", domain);
         }
     }
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var listener = new HttpListener();
-        listener.Prefixes.Add("http://0.0.0.0:5057/force_refresh/");
+        return Task.Run(() =>
+         {
+             using var listener = new HttpListener();
 
-        listener.Start();
-        _logger.LogInformation("Api server listen on 0.0.0.0:5057.");
+             var ip = _apiConfig.IpAddress.MapToIPv4().ToString();
 
-        while (true)
-        {
-            var ctx = listener.GetContext();
-            Update();
-            using var resp = ctx.Response;
-            resp.StatusCode = (int)HttpStatusCode.OK;
-        }
+             logger.LogInformation("Start api listen on {ip}:{port}.", ip, _apiConfig.Port);
+
+             if (_apiConfig.IpAddress.Equals(IPAddress.Any))
+             {
+                 ip = "+";
+             }
+
+             listener.Prefixes.Add($"http://{ip}:{_apiConfig.Port}/force_refresh/");
+
+             listener.Start();
+
+             while (!stoppingToken.IsCancellationRequested)
+             {
+                 var ctx = listener.GetContext();
+                 Update();
+
+                 using var resp = ctx.Response;
+                 resp.StatusCode = (int)HttpStatusCode.OK;
+             }
+         }, stoppingToken);
     }
 }
