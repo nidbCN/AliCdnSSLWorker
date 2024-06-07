@@ -2,10 +2,13 @@
 
 namespace AliCdnSSLWorker.Services;
 
-public class RefreshRequestService(RefreshRequestClient client)
+public class RefreshRequestService(ILogger<RefreshRequestService> logger, RefreshRequestClient client)
 {
     public async Task Update()
-        => (await client.RequestAsync())
-            .EnsureSuccessStatusCode();
+    {
+        logger.LogInformation("Send refresh request to {url}", client.Client.BaseAddress);
+        var resp = await client.RequestAsync();
+        resp.EnsureSuccessStatusCode();
+    }
 
 }

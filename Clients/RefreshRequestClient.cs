@@ -9,11 +9,9 @@ public class RefreshRequestClient
 
     public RefreshRequestClient(HttpClient httpClient, IOptions<ApiConfig> options)
     {
-        var ip = options.Value.IpAddress.ToString();
-        if (options.Value.IpAddress.Equals(IPAddress.Any))
-        {
-            ip = IPAddress.Loopback.ToString();
-        }
+        var ip = options.Value.IpAddress.Equals(IPAddress.Any)
+            ? IPAddress.Loopback
+            : options.Value.IpAddress;
 
         httpClient.BaseAddress = new($"http://{ip}:{options.Value.Port}/");
         httpClient.DefaultRequestHeaders.Add(
