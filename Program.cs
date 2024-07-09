@@ -32,8 +32,6 @@ logger.LogInformation("Welcome to {name} {version}",
 
 if (args.Length > 0)
 {
-
-
     if (args[0] == "-r" || args[0] == "--refresh")
     {
         logger.LogWarning("Quick update mode. `-r` will request a refresh to running worker.");

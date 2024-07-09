@@ -12,8 +12,7 @@ public class CertScanService
     private DateTime _lastScan;
     private readonly HashSet<string> _domainList;
 
-    private readonly IDictionary<string, (string, string)> _certList
-        = new Dictionary<string, (string, string)>();
+    private readonly Dictionary<string, (string, string)> _certList = [];
 
     public CertScanService(ILogger<CertScanService> logger, IOptions<CertConfig> options)
     {
@@ -23,7 +22,7 @@ public class CertScanService
 
         _domainList = _options.DomainList;
 
-        UpdateCertAsync().Wait();
+        ScanCertAsync().GetAwaiter().GetResult();
     }
 
     public (string, string)? GetCertByDomain(string domain)
@@ -33,7 +32,7 @@ public class CertScanService
         var time = DateTime.Now - _lastScan;
         if (time > TimeSpan.FromMinutes(_options.CacheTimeoutMin))
         {
-            UpdateCertAsync().Wait();
+            ScanCertAsync().Wait();
             _lastScan = DateTime.Now;
         }
 
@@ -41,7 +40,7 @@ public class CertScanService
         return certPair;
     }
 
-    private async Task UpdateCertAsync()
+    private async Task ScanCertAsync()
     {
         var dir = new DirectoryInfo(_options.CertSerchPath);
         if (!dir.Exists)
@@ -54,29 +53,29 @@ public class CertScanService
         foreach (var subDir in dirList)
         {
             var certFile = new FileInfo(Path.Combine(subDir.FullName, "cert.pem"));
-            var privKeyFile = new FileInfo(Path.Combine(subDir.FullName, "privkey.pem"));
+            var privateKeyFile = new FileInfo(Path.Combine(subDir.FullName, "privkey.pem"));
 
-            if (!certFile.Exists || !privKeyFile.Exists)
+            if (!certFile.Exists || !privateKeyFile.Exists)
             {
-		_logger.LogWarning("Can not found cert or private key file, skip {d}", subDir.Name);
+                _logger.LogWarning("Can not found cert or private key file, skip {d}", subDir.Name);
                 continue;
             }
 
-            using var fs = certFile.OpenRead();
+            await using var fs = certFile.OpenRead();
             using var reader = new StreamReader(fs);
             var line = await reader.ReadLineAsync();
+
             const string CERT_BEGIN = "-----BEGIN CERTIFICATE-----";
             const string CERT_END = "-----END CERTIFICATE-----";
 
             if (line is null || !line.Contains("-----BEGIN CERTIFICATE-----"))
             {
-		_logger.LogWarning("Can not found BEGIN CERT flag, skip.");
+                _logger.LogWarning("Can not found BEGIN CERT flag, skip.");
                 continue;
             }
 
             // 是证书
             var stringBuilder = new StringBuilder((int)certFile.Length);
-            var lines = new LinkedList<string>();
 
             while ((line = reader.ReadLine()) != null)
             {
@@ -91,30 +90,23 @@ public class CertScanService
 
             var commonName = cert.GetNameInfo(X509NameType.SimpleName, false);
 
-            if (commonName is null || !_domainList.Contains(commonName))
+            if (!_domainList.Contains(commonName))
             {
                 // 不监听此域名
-		_logger.LogInformation("Domain {d} is not in list, skip.", commonName);
+                _logger.LogInformation("Domain {d} is not in list, skip.", commonName);
                 continue;
             }
 
-	    _logger.LogInformation("Scan cert for domain {d}", commonName);
+            _logger.LogInformation("Scan cert for domain {d}", commonName);
 
-            using var keyReader = new StreamReader(privKeyFile.OpenRead());
-            var keyPEM = await keyReader.ReadToEndAsync();
+            using var keyReader = new StreamReader(privateKeyFile.OpenRead());
+            var keyPem = await keyReader.ReadToEndAsync();
 
-            var certPEM = stringBuilder.Insert(0, CERT_BEGIN+"\n").Append("\n"+CERT_END).ToString();
+            var certPem = stringBuilder.Insert(0, CERT_BEGIN + "\n").Append("\n" + CERT_END).ToString();
 
-	    _logger.LogInformation("Success load cert, cert {c}", certPEM);
+            _logger.LogInformation("Success load cert, cert {c}, private {p}", certPem, keyPem[..24]);
 
-            if (_certList.ContainsKey(commonName))
-            {
-                _certList[commonName] = (certPEM, keyPEM);
-            }
-            else
-            {
-                _certList.Add(commonName, (certPEM, keyPEM));
-            }
+            _certList[commonName] = (certPem, keyPem);
         }
     }
 }

@@ -6,9 +6,9 @@ public class RefreshRequestService(ILogger<RefreshRequestService> logger, Refres
 {
     public async Task Update()
     {
+        var req = client.RequestAsync();
         logger.LogInformation("Send refresh request to {url}", client.Client.BaseAddress);
-        var resp = await client.RequestAsync();
-        resp.EnsureSuccessStatusCode();
+        (await req).EnsureSuccessStatusCode();
     }
 
 }

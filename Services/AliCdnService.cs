@@ -60,11 +60,11 @@ public class AliCdnService
             _logger.LogError("rec: {r}", error.Data["Recommend"]);
             AlibabaCloud.TeaUtil.Common.AssertAsString(error.Message);
         }
-        catch (Exception _error)
+        catch (Exception e)
         {
-            TeaException error = new TeaException(new Dictionary<string, object>
+            var error = new TeaException(new Dictionary<string, object>
                 {
-                    { "message", _error.Message }
+                    { "message", e.Message }
                 });
             // 此处仅做打印展示，请谨慎对待异常处理，在工程项目中切勿直接忽略异常。
             // 错误 message
@@ -90,6 +90,8 @@ public class AliCdnService
             SSLPub = cert,
             SSLPri = privateKey,
         };
+
+        _logger.LogInformation("Upload cert, cert {c} private {p}", cert, privateKey);
 
         try
         {
