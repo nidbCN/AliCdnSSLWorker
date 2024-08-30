@@ -7,8 +7,8 @@
     <UserSecretsId>dotnet-AliCdnSSLWorker-69cd49e9-faf0-424c-980f-751b97c9a16a</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <DockerfileContext>.</DockerfileContext>
-    <AssemblyVersion>6.0.2.3</AssemblyVersion>
-    <FileVersion>6.0.2.3</FileVersion>
+    <AssemblyVersion>8.0.2.3</AssemblyVersion>
+    <FileVersion>8.0.2.3</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
