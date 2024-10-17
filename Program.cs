@@ -2,6 +2,7 @@ using AliCdnSSLWorker.Clients;
 using AliCdnSSLWorker.Configs;
 using AliCdnSSLWorker.Services;
 using AliCdnSSLWorker.Workers;
+using Microsoft.ApplicationInsights.Extensibility;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -14,6 +15,13 @@ builder.Services.Configure<CertConfig>(
 builder.Services.Configure<ApiConfig>(
     builder.Configuration.GetSection(nameof(ApiConfig))
 );
+
+builder.Services.Configure<TelemetryConfiguration>(
+    builder.Configuration.GetSection(
+        $"Logging:ApplicationInsights:{nameof(TelemetryConfiguration)}")
+);
+
+builder.Logging.AddApplicationInsights(_ => { });
 
 builder.Services.AddHttpClient<RefreshRequestClient>();
 builder.Services.AddSingleton<RefreshRequestService>();
