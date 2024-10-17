@@ -1,10 +1,10 @@
-﻿using Microsoft.Extensions.Options;
-using AlibabaCloud.SDK.Cdn20180510.Models;
+﻿using AlibabaCloud.SDK.Cdn20180510.Models;
 using AlibabaCloud.TeaUtil.Models;
 using AliCdnSSLWorker.Configs;
-using Tea;
 using AliCdnSSLWorker.Models;
 using Aliyun.Credentials;
+using Microsoft.Extensions.Options;
+using Tea;
 
 namespace AliCdnSSLWorker.Services;
 

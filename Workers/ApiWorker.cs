@@ -1,7 +1,7 @@
-﻿using AliCdnSSLWorker.Configs;
+﻿using System.Net;
+using AliCdnSSLWorker.Configs;
 using AliCdnSSLWorker.Services;
 using Microsoft.Extensions.Options;
-using System.Net;
 
 namespace AliCdnSSLWorker.Workers;
 public class ApiWorker(ILogger<ApiWorker> logger,
