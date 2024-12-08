@@ -52,7 +52,8 @@ public class CertScanService
         var dirList = dir.GetDirectories();
         foreach (var subDir in dirList)
         {
-            var certFile = new FileInfo(Path.Combine(subDir.FullName, "cert.pem"));
+            // ReSharper disable once StringLiteralTypo
+            var certFile = new FileInfo(Path.Combine(subDir.FullName, "fullchain.pem"));
             var privateKeyFile = new FileInfo(Path.Combine(subDir.FullName, "privkey.pem"));
 
             if (!certFile.Exists || !privateKeyFile.Exists)
@@ -65,10 +66,10 @@ public class CertScanService
             using var reader = new StreamReader(fs);
             var line = await reader.ReadLineAsync();
 
-            const string CERT_BEGIN = "-----BEGIN CERTIFICATE-----";
-            const string CERT_END = "-----END CERTIFICATE-----";
+            const string certBeginFlag = "-----BEGIN CERTIFICATE-----";
+            const string certEndFlag = "-----END CERTIFICATE-----";
 
-            if (line is null || !line.Contains("-----BEGIN CERTIFICATE-----"))
+            if (line is null || !line.Contains(certBeginFlag))
             {
                 _logger.LogWarning("Can not found BEGIN CERT flag, skip.");
                 continue;
@@ -77,9 +78,9 @@ public class CertScanService
             // 是证书
             var stringBuilder = new StringBuilder((int)certFile.Length);
 
-            while ((line = reader.ReadLine()) != null)
+            while (!string.IsNullOrWhiteSpace(line = await reader.ReadLineAsync()))
             {
-                if (line.Contains("-----END CERTIFICATE-----"))
+                if (line.Contains(certEndFlag))
                     break;
 
                 stringBuilder.Append(line);
@@ -102,7 +103,7 @@ public class CertScanService
             using var keyReader = new StreamReader(privateKeyFile.OpenRead());
             var keyPem = await keyReader.ReadToEndAsync();
 
-            var certPem = stringBuilder.Insert(0, CERT_BEGIN + "\n").Append("\n" + CERT_END).ToString();
+            var certPem = await reader.ReadToEndAsync();
 
             _logger.LogInformation("Success load cert, cert {c}, private {p}", certPem, keyPem[..24]);
 
