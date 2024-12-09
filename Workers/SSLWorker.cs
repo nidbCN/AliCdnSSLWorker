@@ -4,12 +4,11 @@ using Microsoft.Extensions.Options;
 
 namespace AliCdnSSLWorker.Workers;
 
-public class SSLWorker(ILogger<SSLWorker> logger,
+public class SslWorker(ILogger<SslWorker> logger,
     IOptions<CertConfig> options,
     AliCdnService aliCdnService,
     CertScanService certScanService) : BackgroundService
 {
-    private readonly CertConfig _config = options.Value;
     private readonly TimeSpan _interval = TimeSpan.FromHours(options.Value.IntervalHour);
 
     public bool TryUpdate()
@@ -20,23 +19,21 @@ public class SSLWorker(ILogger<SSLWorker> logger,
             return false;
         }
 
-        var infoDict = infos
-            .ToDictionary(i => i.CertCommonName, i => i.CertExpireTime);
+        var now = DateTime.Now;
 
-        foreach (var domain in _config.DomainList)
+        // ReSharper disable once PossibleMultipleEnumeration
+        var willExpiredDomainList = infos
+            .Where(i => options.Value.DomainList.Contains(i.Name))
+            .Select(i => (i.Name, i.CertCommonName, i.CertExpireTime - now))
+            .Where(tuple => tuple.Item3 <= _interval)
+            .ToList();
+
+
+        foreach (var (domain, cn, expiredTime) in willExpiredDomainList)
         {
-            if (infoDict.TryGetValue(domain, out var time))
-            {
-                var timeToExpiry = time - DateTime.Now;
 
-                if (timeToExpiry > _interval)
-                {
-                    logger.LogInformation("Domain {cn} has {d}d,{h}hr,{m}min expire.No need refresh.", domain, timeToExpiry.Days, timeToExpiry.Hours, timeToExpiry.Minutes);
-                    continue;
-                }
+            logger.LogInformation("CDN {cdn name} cert `{cn}` has {t:c} expire. Upload local cert.", domain, cn, expiredTime);
 
-                logger.LogInformation("Domain {cn} has {d}d,{h}hr,{m}min expire.Upload new.", domain, timeToExpiry.Days, timeToExpiry.Hours, timeToExpiry.Minutes);
-            }
 
             logger.LogInformation("Update domain {d}", domain);
             var certPair = certScanService.GetCertByDomain(domain);
@@ -48,7 +45,6 @@ public class SSLWorker(ILogger<SSLWorker> logger,
 
             if (aliCdnService.TryUploadCert(domain, certPair.Value))
                 logger.LogInformation("Success upload cert for {d}.", domain);
-
         }
 
         return true;

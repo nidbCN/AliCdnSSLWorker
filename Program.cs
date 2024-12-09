@@ -28,7 +28,7 @@ builder.Services.AddSingleton<RefreshRequestService>();
 builder.Services.AddSingleton<AliCdnService>();
 builder.Services.AddSingleton<CertScanService>();
 
-builder.Services.AddHostedService<SSLWorker>();
+builder.Services.AddHostedService<SslWorker>();
 builder.Services.AddHostedService<ApiWorker>();
 
 var host = builder.Build();

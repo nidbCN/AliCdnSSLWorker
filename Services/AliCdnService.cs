@@ -43,7 +43,7 @@ public class AliCdnService
             var resp = _apiClient.DescribeCdnHttpsDomainListWithOptions(req, _runtimeOptions);
             if (resp.StatusCode == 200)
             {
-                infos = resp.Body.CertInfos.CertInfo.Select(c => new DomainCertInfo()
+                infos = resp.Body.CertInfos.CertInfo.Select(c => new DomainCertInfo
                 {
                     Name = c.DomainName,
                     CertExpireTime = DateTime.Parse(c.CertExpireTime),

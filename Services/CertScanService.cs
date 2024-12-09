@@ -89,16 +89,28 @@ public class CertScanService
             var certContent = stringBuilder.ToString();
             var cert = new X509Certificate2(Convert.FromBase64String(certContent));
 
-            var commonName = cert.GetNameInfo(X509NameType.SimpleName, false);
+            var certDomain = cert.GetNameInfo(X509NameType.SimpleName, false);
 
-            if (!_domainList.Contains(commonName))
+            IList<string> matchedDomainList;
+
+            if (certDomain.StartsWith("*."))
+            {
+                matchedDomainList = _domainList
+                    .Where(certDomain.EndsWith)
+                    .ToArray();
+            }
+            else if (_domainList.Contains(certDomain))
+            {
+                matchedDomainList = new List<string> { certDomain };
+            }
+            else
             {
                 // 不监听此域名
-                _logger.LogInformation("Domain {d} is not in list, skip.", commonName);
+                _logger.LogInformation("Domain {d} is not in list, skip.", certDomain);
                 continue;
             }
 
-            _logger.LogInformation("Scan cert for domain {d}", commonName);
+            _logger.LogInformation("Domain {cert domain} cert matched for domain {match list}", certDomain, string.Join(',', matchedDomainList));
 
             using var keyReader = new StreamReader(privateKeyFile.OpenRead());
             var keyPem = await keyReader.ReadToEndAsync();
@@ -107,7 +119,10 @@ public class CertScanService
 
             _logger.LogInformation("Success load cert, cert {c}, private {p}", certPem, keyPem[..24]);
 
-            _certList[commonName] = (certPem, keyPem);
+            foreach (var matchDomain in matchedDomainList)
+            {
+                _certList[matchDomain] = (certPem, keyPem);
+            }
         }
     }
 }
