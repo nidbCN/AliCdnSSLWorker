@@ -42,7 +42,7 @@ public class CertScanService
 
     private async Task ScanCertAsync()
     {
-        var dir = new DirectoryInfo(_options.CertSerchPath);
+        var dir = new DirectoryInfo(_options.CertSearchPath);
         if (!dir.Exists)
         {
             _logger.LogError("Dir {d} isn't exists!", dir.FullName);

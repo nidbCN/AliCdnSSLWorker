@@ -2,7 +2,7 @@
 
 public record CertConfig
 {
-    public required string CertSerchPath { get; init; }
+    public required string CertSearchPath { get; init; }
     public bool RecursionSearch { get; init; } = true;
     public uint IntervalHour { get; init; } = 24;
     public uint CacheTimeoutMin { get; init; } = 30;
