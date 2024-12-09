@@ -8,7 +8,7 @@ namespace AliCdnSSLWorker.Services;
 public class CertScanService
 {
     private readonly ILogger<CertScanService> _logger;
-    private readonly CertConfig _options;
+    private readonly IOptions<CertConfig> _options;
     private DateTime _lastScan;
     private readonly HashSet<string> _domainList;
 
@@ -17,10 +17,9 @@ public class CertScanService
     public CertScanService(ILogger<CertScanService> logger, IOptions<CertConfig> options)
     {
         _logger = logger;
+        _options = options;
 
-        _options = options.Value ?? throw new ArgumentNullException(nameof(options));
-
-        _domainList = _options.DomainList;
+        _domainList = _options.Value.DomainList;
 
         ScanCertAsync().GetAwaiter().GetResult();
     }
@@ -30,7 +29,7 @@ public class CertScanService
         ArgumentNullException.ThrowIfNull(domain);
 
         var time = DateTime.Now - _lastScan;
-        if (time > TimeSpan.FromMinutes(_options.CacheTimeoutMin))
+        if (time > TimeSpan.FromMinutes(_options.Value.CacheTimeoutMin))
         {
             ScanCertAsync().Wait();
             _lastScan = DateTime.Now;
@@ -42,21 +41,28 @@ public class CertScanService
 
     private async Task ScanCertAsync()
     {
-        var dir = new DirectoryInfo(_options.CertSearchPath);
+        var dir = new DirectoryInfo(_options.Value.CertSearchPath);
         if (!dir.Exists)
         {
             _logger.LogError("Dir {d} isn't exists!", dir.FullName);
             return;
         }
 
-        var dirList = dir.GetDirectories();
+        var dirList = _options.Value.RecursionSearch
+            ? dir.GetDirectories()
+            : [dir];
+
         foreach (var subDir in dirList)
         {
-            // ReSharper disable once StringLiteralTypo
-            var certFile = new FileInfo(Path.Combine(subDir.FullName, "fullchain.pem"));
-            var privateKeyFile = new FileInfo(Path.Combine(subDir.FullName, "privkey.pem"));
+            var certFile = subDir
+                .GetFiles()
+                .FirstOrDefault(f => f.Name == _options.Value.CertFileName);
 
-            if (!certFile.Exists || !privateKeyFile.Exists)
+            var privateKeyFile = subDir
+                .GetFiles()
+                .FirstOrDefault(f => f.Name == _options.Value.PrivateKeyFileName);
+
+            if (certFile is null || privateKeyFile is null)
             {
                 _logger.LogWarning("Can not found cert or private key file, skip {d}", subDir.Name);
                 continue;
