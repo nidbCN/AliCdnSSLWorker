@@ -55,23 +55,11 @@ public class AliCdnService
         }
         catch (TeaException error)
         {
-            _logger.LogError("error msg: {m}", error.Message);
-            // 诊断地址
-            _logger.LogError("rec: {r}", error.Data["Recommend"]);
-            AlibabaCloud.TeaUtil.Common.AssertAsString(error.Message);
+            _logger.LogError(error, "Describe cdn domain list failed with msg: {m}, {rec}", error.Message, error.Data["Recommend"]);
         }
         catch (Exception e)
         {
-            var error = new TeaException(new Dictionary<string, object>
-                {
-                    { "message", e.Message }
-                });
-            // 此处仅做打印展示，请谨慎对待异常处理，在工程项目中切勿直接忽略异常。
-            // 错误 message
-            Console.WriteLine(error.Message);
-            // 诊断地址
-            Console.WriteLine(error.Data["Recommend"]);
-            AlibabaCloud.TeaUtil.Common.AssertAsString(error.Message);
+            _logger.LogError(e, "An error occured during describe cdn domain list, msg: {m}", e.Message);
         }
 
         infos = Array.Empty<DomainCertInfo>();
@@ -101,25 +89,11 @@ public class AliCdnService
         }
         catch (TeaException error)
         {
-            // 此处仅做打印展示，请谨慎对待异常处理，在工程项目中切勿直接忽略异常。
-            // 错误 message
-            Console.WriteLine(error.Message);
-            // 诊断地址
-            Console.WriteLine(error.Data["Recommend"]);
-            AlibabaCloud.TeaUtil.Common.AssertAsString(error.Message);
+            _logger.LogError(error, "Upload cert failed with msg: {m}, {r}", error.Message, error.Data["Recommend"]);
         }
-        catch (Exception _error)
+        catch (Exception e)
         {
-            TeaException error = new TeaException(new Dictionary<string, object>
-                {
-                    { "message", _error.Message }
-                });
-            // 此处仅做打印展示，请谨慎对待异常处理，在工程项目中切勿直接忽略异常。
-            // 错误 message
-            Console.WriteLine(error.Message);
-            // 诊断地址
-            Console.WriteLine(error.Data["Recommend"]);
-            AlibabaCloud.TeaUtil.Common.AssertAsString(error.Message);
+            _logger.LogError(e, "An error occured during upload cert, msg: {m}", e.Message);
         }
 
         return false;
