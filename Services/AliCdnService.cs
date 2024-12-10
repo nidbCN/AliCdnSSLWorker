@@ -2,28 +2,32 @@
 using AlibabaCloud.TeaUtil.Models;
 using AliCdnSSLWorker.Configs;
 using AliCdnSSLWorker.Models;
-using Aliyun.Credentials;
+using Aliyun.Credentials.Provider;
+using Aliyun.Credentials.Utils;
 using Microsoft.Extensions.Options;
 using Tea;
+using ApiClient = AlibabaCloud.SDK.Cdn20180510.Client;
+using CredClient = Aliyun.Credentials.Client;
 
 namespace AliCdnSSLWorker.Services;
 
 public class AliCdnService
 {
     private readonly ILogger<AliCdnService> _logger;
-    private readonly AlibabaCloud.SDK.Cdn20180510.Client _apiClient;
+    private readonly ApiClient _apiClient;
     private readonly RuntimeOptions _runtimeOptions = new();
 
     public AliCdnService(ILogger<AliCdnService> logger, IOptions<AliCdnConfig> options)
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        var credentialClient = new Client(new Aliyun.Credentials.Models.Config
-        {
-            AccessKeyId = options.Value.AccessKeyId,
-            AccessKeySecret = options.Value.AccessKeySecret,
-            Type = "access_key",
-        });
+        var credentialClient = new CredClient(
+            new StaticCredentialsProvider(new()
+            {
+                AccessKeyId = options.Value.AccessKeyId,
+                AccessKeySecret = options.Value.AccessKeySecret,
+                Type = AuthConstant.AccessKey,
+            }));
 
         _apiClient = new(new()
         {
