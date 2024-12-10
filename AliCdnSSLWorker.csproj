@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="AlibabaCloud.SDK.Cdn20180510" Version="3.2.0" />
-    <PackageReference Include="Aliyun.Credentials" Version="1.4.3" />
+    <PackageReference Include="Aliyun.Credentials" Version="1.4.2" />
     <PackageReference Include="Macross.Json.Extensions" Version="3.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.0" />

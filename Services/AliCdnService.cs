@@ -22,12 +22,12 @@ public class AliCdnService
         ArgumentNullException.ThrowIfNull(options);
 
         var credentialClient = new CredClient(
-            new StaticCredentialsProvider(new()
+            new()
             {
                 AccessKeyId = options.Value.AccessKeyId,
                 AccessKeySecret = options.Value.AccessKeySecret,
                 Type = AuthConstant.AccessKey,
-            }));
+            });
 
         _apiClient = new(new()
         {
