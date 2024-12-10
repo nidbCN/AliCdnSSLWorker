@@ -18,7 +18,7 @@ public class AliCdnService
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        Client credentialClient = new(new()
+        var credentialClient = new Client(new Aliyun.Credentials.Models.Config
         {
             AccessKeyId = options.Value.AccessKeyId,
             AccessKeySecret = options.Value.AccessKeySecret,
@@ -73,6 +73,7 @@ public class AliCdnService
         var req = new SetCdnDomainSSLCertificateRequest
         {
             DomainName = domainName,
+            CertName = domainName + DateTime.Now.ToShortDateString(),
             CertType = "upload",
             SSLProtocol = "on",
             SSLPub = cert,
