@@ -68,31 +68,21 @@ public class CertScanService
                 continue;
             }
 
-            await using var certStream = certFile.OpenRead();
-            using var certReader = new StreamReader(certStream);
-            var line = await certReader.ReadLineAsync();
+            using var certReader = certFile.OpenText();
+            var certPem = await certReader.ReadToEndAsync();
 
             const string certBeginFlag = "-----BEGIN CERTIFICATE-----";
             const string certEndFlag = "-----END CERTIFICATE-----";
 
-            if (line is null || !line.Contains(certBeginFlag))
+            if (string.IsNullOrWhiteSpace(certPem) || !certPem.StartsWith(certBeginFlag))
             {
                 _logger.LogWarning("Can not found BEGIN CERT flag, skip.");
                 continue;
             }
 
             // 是证书
-            var stringBuilder = new StringBuilder((int)certFile.Length);
-
-            while (!string.IsNullOrWhiteSpace(line = await certReader.ReadLineAsync()))
-            {
-                if (line.Contains(certEndFlag))
-                    break;
-
-                stringBuilder.Append(line);
-            }
-
-            var certContent = stringBuilder.ToString();
+            var certEndIndex = certPem.IndexOf(certEndFlag, StringComparison.Ordinal);
+            var certContent = certPem.Substring(certBeginFlag.Length, certEndIndex - certBeginFlag.Length);
             var cert = new X509Certificate2(Convert.FromBase64String(certContent));
 
             var certDomain = cert.GetNameInfo(X509NameType.SimpleName, false);
@@ -118,10 +108,7 @@ public class CertScanService
 
             _logger.LogInformation("CN `{cert domain}` in cert matched domain `{match list}`", certDomain, string.Join(',', matchedDomainList));
 
-            using var keyReader = new StreamReader(privateKeyFile.OpenRead());
-            var keyPem = await keyReader.ReadToEndAsync();
-            certStream.Seek(0, SeekOrigin.Begin);
-            var certPem = await certReader.ReadToEndAsync();
+            var keyPem = await privateKeyFile.OpenText().ReadToEndAsync();
 
             _logger.LogInformation("Success load cert, cert content: `{c}`, private `{p}`", certPem, keyPem);
 
