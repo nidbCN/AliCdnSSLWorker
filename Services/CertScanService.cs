@@ -112,18 +112,21 @@ public class CertScanService
             else
             {
                 // 不监听此域名
-                _logger.LogInformation("Domain {d} is not in list, skip.", certDomain);
+                _logger.LogInformation("CN `{cert domain}` in cert not match any domain, skip.", certDomain);
                 continue;
             }
 
-            _logger.LogInformation("Domain {cert domain} cert matched for domain {match list}", certDomain, string.Join(',', matchedDomainList));
+            _logger.LogInformation("CN `{cert domain}` in cert matched domain `{match list}`", certDomain, string.Join(',', matchedDomainList));
 
             using var keyReader = new StreamReader(privateKeyFile.OpenRead());
             var keyPem = await keyReader.ReadToEndAsync();
 
-            var certPem = await reader.ReadToEndAsync();
+            var certPem = stringBuilder
+                .AppendLine()
+                .Append(await reader.ReadToEndAsync())
+                .ToString();
 
-            _logger.LogInformation("Success load cert, cert {c}, private {p}", certPem, keyPem[..24]);
+            _logger.LogInformation("Success load cert, cert content: `{c}`, private `{p}`", certPem, keyPem);
 
             foreach (var matchDomain in matchedDomainList)
             {

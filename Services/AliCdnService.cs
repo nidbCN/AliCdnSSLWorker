@@ -84,7 +84,7 @@ public class AliCdnService
             SSLPri = privateKey,
         };
 
-        _logger.LogInformation("Upload cert, cert {c} private {p}", cert, privateKey);
+        _logger.LogInformation("Upload cert, cert `{c}` private `{p}`", cert, privateKey);
 
         try
         {
