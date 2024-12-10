@@ -68,9 +68,9 @@ public class CertScanService
                 continue;
             }
 
-            await using var fs = certFile.OpenRead();
-            using var reader = new StreamReader(fs);
-            var line = await reader.ReadLineAsync();
+            await using var certStream = certFile.OpenRead();
+            using var certReader = new StreamReader(certStream);
+            var line = await certReader.ReadLineAsync();
 
             const string certBeginFlag = "-----BEGIN CERTIFICATE-----";
             const string certEndFlag = "-----END CERTIFICATE-----";
@@ -84,7 +84,7 @@ public class CertScanService
             // 是证书
             var stringBuilder = new StringBuilder((int)certFile.Length);
 
-            while (!string.IsNullOrWhiteSpace(line = await reader.ReadLineAsync()))
+            while (!string.IsNullOrWhiteSpace(line = await certReader.ReadLineAsync()))
             {
                 if (line.Contains(certEndFlag))
                     break;
@@ -120,11 +120,8 @@ public class CertScanService
 
             using var keyReader = new StreamReader(privateKeyFile.OpenRead());
             var keyPem = await keyReader.ReadToEndAsync();
-
-            var certPem = stringBuilder
-                .AppendLine()
-                .Append(await reader.ReadToEndAsync())
-                .ToString();
+            certStream.Seek(0, SeekOrigin.Begin);
+            var certPem = await certReader.ReadToEndAsync();
 
             _logger.LogInformation("Success load cert, cert content: `{c}`, private `{p}`", certPem, keyPem);
 
