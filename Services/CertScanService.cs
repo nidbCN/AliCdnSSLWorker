@@ -8,7 +8,7 @@ namespace AliCdnSSLWorker.Services;
 public class CertScanService
 {
     private readonly ILogger<CertScanService> _logger;
-    private readonly CertConfig _options;
+    private readonly IOptions<CertConfig> _options;
     private DateTime _lastScan;
     private readonly HashSet<string> _domainList;
 
@@ -17,10 +17,9 @@ public class CertScanService
     public CertScanService(ILogger<CertScanService> logger, IOptions<CertConfig> options)
     {
         _logger = logger;
+        _options = options;
 
-        _options = options.Value ?? throw new ArgumentNullException(nameof(options));
-
-        _domainList = _options.DomainList;
+        _domainList = _options.Value.DomainList;
 
         ScanCertAsync().GetAwaiter().GetResult();
     }
@@ -30,7 +29,7 @@ public class CertScanService
         ArgumentNullException.ThrowIfNull(domain);
 
         var time = DateTime.Now - _lastScan;
-        if (time > TimeSpan.FromMinutes(_options.CacheTimeoutMin))
+        if (time > TimeSpan.FromMinutes(_options.Value.CacheTimeoutMin))
         {
             ScanCertAsync().Wait();
             _lastScan = DateTime.Now;
@@ -42,20 +41,28 @@ public class CertScanService
 
     private async Task ScanCertAsync()
     {
-        var dir = new DirectoryInfo(_options.CertSerchPath);
+        var dir = new DirectoryInfo(_options.Value.CertSearchPath);
         if (!dir.Exists)
         {
             _logger.LogError("Dir {d} isn't exists!", dir.FullName);
             return;
         }
 
-        var dirList = dir.GetDirectories();
+        var dirList = _options.Value.RecursionSearch
+            ? dir.GetDirectories()
+            : [dir];
+
         foreach (var subDir in dirList)
         {
-            var certFile = new FileInfo(Path.Combine(subDir.FullName, "cert.pem"));
-            var privateKeyFile = new FileInfo(Path.Combine(subDir.FullName, "privkey.pem"));
+            var certFile = subDir
+                .GetFiles()
+                .FirstOrDefault(f => f.Name == _options.Value.CertFileName);
 
-            if (!certFile.Exists || !privateKeyFile.Exists)
+            var privateKeyFile = subDir
+                .GetFiles()
+                .FirstOrDefault(f => f.Name == _options.Value.PrivateKeyFileName);
+
+            if (certFile is null || privateKeyFile is null)
             {
                 _logger.LogWarning("Can not found cert or private key file, skip {d}", subDir.Name);
                 continue;
@@ -65,10 +72,10 @@ public class CertScanService
             using var reader = new StreamReader(fs);
             var line = await reader.ReadLineAsync();
 
-            const string CERT_BEGIN = "-----BEGIN CERTIFICATE-----";
-            const string CERT_END = "-----END CERTIFICATE-----";
+            const string certBeginFlag = "-----BEGIN CERTIFICATE-----";
+            const string certEndFlag = "-----END CERTIFICATE-----";
 
-            if (line is null || !line.Contains("-----BEGIN CERTIFICATE-----"))
+            if (line is null || !line.Contains(certBeginFlag))
             {
                 _logger.LogWarning("Can not found BEGIN CERT flag, skip.");
                 continue;
@@ -77,9 +84,9 @@ public class CertScanService
             // 是证书
             var stringBuilder = new StringBuilder((int)certFile.Length);
 
-            while ((line = reader.ReadLine()) != null)
+            while (!string.IsNullOrWhiteSpace(line = await reader.ReadLineAsync()))
             {
-                if (line.Contains("-----END CERTIFICATE-----"))
+                if (line.Contains(certEndFlag))
                     break;
 
                 stringBuilder.Append(line);
@@ -88,25 +95,40 @@ public class CertScanService
             var certContent = stringBuilder.ToString();
             var cert = new X509Certificate2(Convert.FromBase64String(certContent));
 
-            var commonName = cert.GetNameInfo(X509NameType.SimpleName, false);
+            var certDomain = cert.GetNameInfo(X509NameType.SimpleName, false);
 
-            if (!_domainList.Contains(commonName))
+            IList<string> matchedDomainList;
+
+            if (certDomain.StartsWith("*."))
+            {
+                matchedDomainList = _domainList
+                    .Where(certDomain.EndsWith)
+                    .ToArray();
+            }
+            else if (_domainList.Contains(certDomain))
+            {
+                matchedDomainList = new List<string> { certDomain };
+            }
+            else
             {
                 // 不监听此域名
-                _logger.LogInformation("Domain {d} is not in list, skip.", commonName);
+                _logger.LogInformation("Domain {d} is not in list, skip.", certDomain);
                 continue;
             }
 
-            _logger.LogInformation("Scan cert for domain {d}", commonName);
+            _logger.LogInformation("Domain {cert domain} cert matched for domain {match list}", certDomain, string.Join(',', matchedDomainList));
 
             using var keyReader = new StreamReader(privateKeyFile.OpenRead());
             var keyPem = await keyReader.ReadToEndAsync();
 
-            var certPem = stringBuilder.Insert(0, CERT_BEGIN + "\n").Append("\n" + CERT_END).ToString();
+            var certPem = await reader.ReadToEndAsync();
 
             _logger.LogInformation("Success load cert, cert {c}, private {p}", certPem, keyPem[..24]);
 
-            _certList[commonName] = (certPem, keyPem);
+            foreach (var matchDomain in matchedDomainList)
+            {
+                _certList[matchDomain] = (certPem, keyPem);
+            }
         }
     }
 }
