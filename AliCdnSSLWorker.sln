@@ -5,6 +5,8 @@ VisualStudioVersion = 17.8.34408.163
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AliCdnSSLWorker", "AliCdnSSLWorker\AliCdnSSLWorker.csproj", "{95A4EC49-303C-4A07-B42C-2589CE625DDF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AliCdnSSLWorker.Test", "AliCdnSSLWorker.Test\AliCdnSSLWorker.Test.csproj", "{5599C2CA-3B24-4822-81D4-F56BFFCE836C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{95A4EC49-303C-4A07-B42C-2589CE625DDF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{95A4EC49-303C-4A07-B42C-2589CE625DDF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{95A4EC49-303C-4A07-B42C-2589CE625DDF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5599C2CA-3B24-4822-81D4-F56BFFCE836C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5599C2CA-3B24-4822-81D4-F56BFFCE836C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5599C2CA-3B24-4822-81D4-F56BFFCE836C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5599C2CA-3B24-4822-81D4-F56BFFCE836C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
