@@ -1,22 +1,21 @@
 ﻿using System.Net;
 using AliCdnSSLWorker.Configs;
+using AliCdnSSLWorker.Extensions;
 using AliCdnSSLWorker.Services;
 using Microsoft.Extensions.Options;
 
-namespace AliCdnSSLWorker.Workers;
-public class ApiWorker(ILogger<ApiWorker> logger,
+namespace AliCdnSSLWorker.Monitors;
+
+public class ForceMonitor(ILogger<ForceMonitor> logger,
     IOptions<CertConfig> certOptions,
-    IOptions<ApiConfig> apiOptions,
+    IOptions<ForceMonitorConfig> forceMonitorOptions,
     AliCdnService aliCdnService,
     CertScanService certScanService
     ) : BackgroundService
 {
-    private readonly CertConfig _certConfig = certOptions.Value;
-    private readonly ApiConfig _apiConfig = apiOptions.Value;
-
     private void Update()
     {
-        foreach (var domain in _certConfig.DomainList)
+        foreach (var domain in certOptions.Value.DomainList)
         {
             logger.LogInformation("Update domain {d}", domain);
             var certPair = certScanService.GetCertByDomain(domain);
@@ -37,16 +36,15 @@ public class ApiWorker(ILogger<ApiWorker> logger,
          {
              using var listener = new HttpListener();
 
-             var ip = _apiConfig.IpAddress.MapToIPv4().ToString();
+             var ip = forceMonitorOptions.Value.GetIpAddress().ToString();
+             var port = forceMonitorOptions.Value.Port;
 
-             logger.LogInformation("Start api listen on {ip}:{port}.", ip, _apiConfig.Port);
+             logger.LogInformation("Start api listen on {ip}:{port}.", ip, port);
 
-             if (_apiConfig.IpAddress.Equals(IPAddress.Any))
-             {
+             if (forceMonitorOptions.Value.GetIpAddress().Equals(IPAddress.Any))
                  ip = "+";
-             }
 
-             listener.Prefixes.Add($"http://{ip}:{_apiConfig.Port}/force_refresh/");
+             listener.Prefixes.Add($"http://{ip}:{port}/force_refresh/");
 
              listener.Start();
 

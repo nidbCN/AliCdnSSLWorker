@@ -7,11 +7,11 @@ public class RefreshRequestClient
 {
     public HttpClient Client { get; }
 
-    public RefreshRequestClient(HttpClient httpClient, IOptions<ApiConfig> options)
+    public RefreshRequestClient(HttpClient httpClient, IOptions<ForceMonitorConfig> options)
     {
-        var ip = options.Value.IpAddress.Equals(IPAddress.Any)
+        var ip = options.Value.Ip.Equals(IPAddress.Any)
             ? IPAddress.Loopback
-            : options.Value.IpAddress;
+            : options.Value.Ip;
 
         httpClient.BaseAddress = new($"http://{ip}:{options.Value.Port}/");
         httpClient.DefaultRequestHeaders.Add(

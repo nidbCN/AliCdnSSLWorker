@@ -2,9 +2,9 @@ using AliCdnSSLWorker.Configs;
 using AliCdnSSLWorker.Services;
 using Microsoft.Extensions.Options;
 
-namespace AliCdnSSLWorker.Workers;
+namespace AliCdnSSLWorker.Monitors;
 
-public class SslWorker(ILogger<SslWorker> logger,
+public class TimerMonitor(ILogger<TimerMonitor> logger,
     IOptions<CertConfig> options,
     AliCdnService aliCdnService,
     CertScanService certScanService) : BackgroundService
