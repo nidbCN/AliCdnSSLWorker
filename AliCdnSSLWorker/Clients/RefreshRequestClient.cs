@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using AliCdnSSLWorker.Configs;
+using AliCdnSSLWorker.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace AliCdnSSLWorker.Clients;
@@ -9,14 +10,17 @@ public class RefreshRequestClient
 
     public RefreshRequestClient(HttpClient httpClient, IOptions<ForceMonitorConfig> options)
     {
-        var ip = options.Value.Ip.Equals(IPAddress.Any)
-            ? IPAddress.Loopback
-            : options.Value.Ip;
+        var ipAddress = options.Value.GetIpAddress();
 
-        httpClient.BaseAddress = new($"http://{ip}:{options.Value.Port}/");
+        var ip = ipAddress.Equals(IPAddress.Any)
+            ? IPAddress.Loopback
+            : ipAddress;
+        var port = options.Value.Port;
+
+        httpClient.BaseAddress = new($"http://{ip}:{port}/");
         httpClient.DefaultRequestHeaders.Add(
             "User-Agent",
-            $"AliCdnSSLWorker/{GetType().Assembly.GetName().Version}"
+            $"{nameof(AliCdnSSLWorker)}/{GetType().Assembly.GetName().Version}"
         );
 
         Client = httpClient;
