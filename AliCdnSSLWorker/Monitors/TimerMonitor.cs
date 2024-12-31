@@ -8,7 +8,7 @@ public class TimerMonitor(ILogger<TimerMonitor> logger,
     IOptions<CertConfig> options,
     IOptions<TimerMonitorConfig> monitorOptions,
     AliCdnService aliCdnService,
-    CertScanService certScanService) : BackgroundService
+    CertService certService) : BackgroundService
 {
     public bool TryUpdate()
     {
@@ -22,9 +22,7 @@ public class TimerMonitor(ILogger<TimerMonitor> logger,
 
         // ReSharper disable once PossibleMultipleEnumeration
         var willExpiredDomainList = infos
-            .Where(i => options.Value.DomainWhiteList?.Contains(i.Name)
-                        ?? options.Value.DomainBlackList?.Contains(i.Name)
-                        ?? true)
+            .Where(i => options.Value.DomainList.Contains(i.Name))
             .Select(i => (i.Name, i.CertCommonName, i.CertExpireTime - now))
             .Where(tuple => tuple.Item3 <= monitorOptions.Value.RefreshInterval)
             .ToList();
@@ -34,7 +32,7 @@ public class TimerMonitor(ILogger<TimerMonitor> logger,
             logger.LogInformation("CDN {cdn name} cert `{cn}` has {t:c} expire. Upload local cert.", domain, cn, expiredTime);
 
             logger.LogInformation("Update domain {d}", domain);
-            var certPair = certScanService.GetCertByDomain(domain);
+            var certPair = certService.GetCertByDomain(domain);
             if (certPair is null)
             {
                 logger.LogError("Can not found cert for {d}", domain);

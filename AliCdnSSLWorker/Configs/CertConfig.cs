@@ -11,6 +11,5 @@ public record CertConfig
     public bool RecursionSearch { get; init; } = true;
     public uint IntervalHour { get; init; } = 24;
     public uint CacheTimeoutMin { get; init; } = 30;
-    public HashSet<string>? DomainWhiteList { get; init; }
-    public HashSet<string>? DomainBlackList { get; init; }
+    public HashSet<string> DomainList { get; init; } = [];
 }

@@ -26,7 +26,7 @@ builder.Logging.AddApplicationInsights(_ => { });
 builder.Services.AddHttpClient<RefreshRequestClient>();
 builder.Services.AddSingleton<RefreshRequestService>();
 builder.Services.AddSingleton<AliCdnService>();
-builder.Services.AddSingleton<CertScanService>();
+builder.Services.AddSingleton<CertService>();
 
 builder.Services.AddHostedService<TimerMonitor>();
 builder.Services.AddHostedService<ForceMonitor>();

@@ -10,15 +10,15 @@ public class ForceMonitor(ILogger<ForceMonitor> logger,
     IOptions<CertConfig> certOptions,
     IOptions<ForceMonitorConfig> forceMonitorOptions,
     AliCdnService aliCdnService,
-    CertScanService certScanService
+    CertService certService
     ) : BackgroundService
 {
     private void Update()
     {
-        foreach (var domain in certOptions.Value.DomainWhiteList)
+        foreach (var domain in certOptions.Value.DomainList)
         {
             logger.LogInformation("Update domain {d}", domain);
-            var certPair = certScanService.GetCertByDomain(domain);
+            var certPair = certService.GetCertByDomain(domain);
             if (certPair is null)
             {
                 logger.LogError("Can not found cert for {d}", domain);

@@ -4,15 +4,15 @@ using Microsoft.Extensions.Options;
 
 namespace AliCdnSSLWorker.Services;
 
-public class CertScanService
+public class CertService
 {
-    private readonly ILogger<CertScanService> _logger;
+    private readonly ILogger<CertService> _logger;
     private readonly IOptions<CertConfig> _options;
     private DateTime _lastScan;
 
     private readonly Dictionary<string, (string, string)> _certList = [];
 
-    public CertScanService(ILogger<CertScanService> logger, IOptions<CertConfig> options)
+    public CertService(ILogger<CertService> logger, IOptions<CertConfig> options)
     {
         _logger = logger;
         _options = options;
@@ -87,11 +87,12 @@ public class CertScanService
 
             if (certDomain.StartsWith("*."))
             {
-                matchedDomainList = _domainList
+                matchedDomainList = _options.Value
+                    .DomainList
                     .Where(certDomain.EndsWith)
                     .ToArray();
             }
-            else if (_domainList.Contains(certDomain))
+            else if (_options.Value.DomainList.Contains(certDomain))
             {
                 matchedDomainList = new List<string> { certDomain };
             }
