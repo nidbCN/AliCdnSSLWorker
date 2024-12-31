@@ -2,17 +2,11 @@
 
 public record TimerMonitorConfig : MonitorConfigBase
 {
-    public TimeSpan RefreshInterval { get; set; } = TimeSpan.Zero;
+    public uint RefreshIntervalMinute { get; set; }
 
-    public uint RefreshIntervalHour
+    public TimeSpan RefreshInterval
     {
-        get => (uint)RefreshInterval.TotalHours;
-        set => _ = TimeSpan.FromHours(value);
-    }
-
-    public uint RefreshIntervalMinute
-    {
-        get => (uint)RefreshInterval.TotalMinutes;
-        set => _ = TimeSpan.FromMinutes(value);
+        get => TimeSpan.FromMinutes(RefreshIntervalMinute);
+        set => RefreshIntervalMinute = (uint)value.TotalMinutes;
     }
 }
