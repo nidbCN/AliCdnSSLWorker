@@ -23,7 +23,7 @@ public class TimerMonitor(ILogger<TimerMonitor> logger,
 
         // ReSharper disable once PossibleMultipleEnumeration
         var willExpiredDomainList = infos
-            .Where(i => options.Value.DomainList.Contains(i.Name))
+            .Where(i => options.Value.DomainWhiteList.Contains(i.Name))
             .Select(i => (i.Name, i.CertCommonName, i.CertExpireTime - now))
             .Where(tuple => tuple.Item3 <= _interval)
             .ToList();

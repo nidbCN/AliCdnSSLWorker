@@ -1,6 +1,6 @@
 ﻿namespace AliCdnSSLWorker.Configs;
 
-public record ForceMonitorConfig
+public record ForceMonitorConfig : MonitorConfigBase
 {
     public required uint Port { get; init; } = 5057;
 

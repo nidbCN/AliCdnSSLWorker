@@ -15,7 +15,7 @@ public class ForceMonitor(ILogger<ForceMonitor> logger,
 {
     private void Update()
     {
-        foreach (var domain in certOptions.Value.DomainList)
+        foreach (var domain in certOptions.Value.DomainWhiteList)
         {
             logger.LogInformation("Update domain {d}", domain);
             var certPair = certScanService.GetCertByDomain(domain);

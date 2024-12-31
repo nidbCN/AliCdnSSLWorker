@@ -1,5 +1,4 @@
 ﻿using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using AliCdnSSLWorker.Configs;
 using Microsoft.Extensions.Options;
 
@@ -10,7 +9,6 @@ public class CertScanService
     private readonly ILogger<CertScanService> _logger;
     private readonly IOptions<CertConfig> _options;
     private DateTime _lastScan;
-    private readonly HashSet<string> _domainList;
 
     private readonly Dictionary<string, (string, string)> _certList = [];
 
@@ -18,8 +16,6 @@ public class CertScanService
     {
         _logger = logger;
         _options = options;
-
-        _domainList = _options.Value.DomainList;
 
         ScanCertAsync().GetAwaiter().GetResult();
     }

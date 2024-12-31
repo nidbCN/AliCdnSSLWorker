@@ -2,7 +2,6 @@
 using AlibabaCloud.TeaUtil.Models;
 using AliCdnSSLWorker.Configs;
 using AliCdnSSLWorker.Models;
-using Aliyun.Credentials.Provider;
 using Aliyun.Credentials.Utils;
 using Microsoft.Extensions.Options;
 using Tea;
