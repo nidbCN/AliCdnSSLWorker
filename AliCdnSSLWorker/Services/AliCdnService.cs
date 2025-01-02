@@ -48,8 +48,8 @@ public class AliCdnService
             {
                 infos = resp.Body.CertInfos.CertInfo.Select(c => new DomainCertInfo
                 {
-                    Name = c.DomainName,
-                    CertExpireTime = DateTime.Parse(c.CertExpireTime),
+                    DomainName = c.DomainName,
+                    CertExpireDate = DateTime.Parse(c.CertExpireTime),
                     CertCommonName = c.CertCommonName,
                 });
 

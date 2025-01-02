@@ -1,8 +1,10 @@
 ﻿namespace AliCdnSSLWorker.Models;
 
-public class DomainCertInfo
+public record DomainCertInfo
 {
-    public string Name { get; set; } = string.Empty;
-    public DateTime CertExpireTime { get; set; }
-    public string CertCommonName { get; set; } = string.Empty;
+    public string DomainName { get; set; } = string.Empty;
+    public required DateTime CertExpireDate { get; set; }
+    public required string CertCommonName { get; init; }
+    public required string FullChain { get; set; }
+    public required string PrivateKey { get; set; }
 }

@@ -1,5 +1,6 @@
 ﻿using System.Security.Cryptography.X509Certificates;
 using AliCdnSSLWorker.Configs;
+using AliCdnSSLWorker.Models;
 using Microsoft.Extensions.Options;
 
 namespace AliCdnSSLWorker.Services;
@@ -9,15 +10,49 @@ public class CertService
     private readonly ILogger<CertService> _logger;
     private readonly IOptions<CertConfig> _options;
     private DateTime _lastScan;
+    private readonly Dictionary<string, DomainCertInfo> _certList2 = [];
 
     private readonly Dictionary<string, (string, string)> _certList = [];
+
+    private const string CertBeginFlag = "-----BEGIN CERTIFICATE-----";
+    private const string CertEndFlag = "-----END CERTIFICATE-----";
 
     public CertService(ILogger<CertService> logger, IOptions<CertConfig> options)
     {
         _logger = logger;
         _options = options;
 
-        ScanCertAsync().GetAwaiter().GetResult();
+        ScanLocalCertAsync().GetAwaiter().GetResult();
+    }
+
+    public void AddCert(string fullChain, string privateKey)
+    {
+        if (!fullChain.StartsWith(CertBeginFlag))
+        {
+            throw new ArgumentOutOfRangeException(nameof(fullChain));
+        }
+
+        var span = fullChain.AsSpan(CertBeginFlag.Length);
+
+        if (!fullChain.EndsWith(CertBeginFlag))
+        {
+            throw new ArgumentOutOfRangeException(nameof(fullChain));
+        }
+
+        var content = span[..^fullChain.Length];
+        var cert = new X509Certificate2(Convert.FromBase64String(content.ToString()));
+        var certDomain = cert.GetNameInfo(X509NameType.SimpleName, false);
+
+    }
+
+    public bool TryGetCertByDomain(string domain, out DomainCertInfo? result)
+    {
+        if (_certList2.TryGetValue(domain, out result))
+        {
+            return true;
+        }
+
+        var span = domain.AsSpan();
     }
 
     public (string, string)? GetCertByDomain(string domain)
@@ -27,7 +62,7 @@ public class CertService
         var time = DateTime.Now - _lastScan;
         if (time > TimeSpan.FromMinutes(_options.Value.CacheTimeoutMin))
         {
-            ScanCertAsync().Wait();
+            ScanLocalCertAsync().Wait();
             _lastScan = DateTime.Now;
         }
 
@@ -35,7 +70,7 @@ public class CertService
         return certPair;
     }
 
-    private async Task ScanCertAsync()
+    private async Task ScanLocalCertAsync()
     {
         var dir = new DirectoryInfo(_options.Value.CertSearchPath);
         if (!dir.Exists)
@@ -67,18 +102,15 @@ public class CertService
             using var certReader = certFile.OpenText();
             var certPem = await certReader.ReadToEndAsync();
 
-            const string certBeginFlag = "-----BEGIN CERTIFICATE-----";
-            const string certEndFlag = "-----END CERTIFICATE-----";
-
-            if (string.IsNullOrWhiteSpace(certPem) || !certPem.StartsWith(certBeginFlag))
+            if (string.IsNullOrWhiteSpace(certPem) || !certPem.StartsWith(CertBeginFlag))
             {
                 _logger.LogWarning("Can not found BEGIN CERT flag, skip.");
                 continue;
             }
 
             // 是证书
-            var certEndIndex = certPem.IndexOf(certEndFlag, StringComparison.Ordinal);
-            var certContent = certPem.Substring(certBeginFlag.Length, certEndIndex - certBeginFlag.Length);
+            var certEndIndex = certPem.IndexOf(CertEndFlag, StringComparison.Ordinal);
+            var certContent = certPem.Substring(CertBeginFlag.Length, certEndIndex - CertBeginFlag.Length);
             var cert = new X509Certificate2(Convert.FromBase64String(certContent));
 
             var certDomain = cert.GetNameInfo(X509NameType.SimpleName, false);

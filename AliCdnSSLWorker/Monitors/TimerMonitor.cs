@@ -22,25 +22,24 @@ public class TimerMonitor(ILogger<TimerMonitor> logger,
 
         // ReSharper disable once PossibleMultipleEnumeration
         var willExpiredDomainList = infos
-            .Where(i => options.Value.DomainList.Contains(i.Name))
-            .Select(i => (i.Name, i.CertCommonName, i.CertExpireTime - now))
-            .Where(tuple => tuple.Item3 <= monitorOptions.Value.RefreshInterval)
+            .Where(i => options.Value.DomainList.Contains(i.DomainName))
+            .Where(i => i.CertExpireDate - now <= monitorOptions.Value.RefreshInterval)
             .ToList();
 
-        foreach (var (domain, cn, expiredTime) in willExpiredDomainList)
+        foreach (var cert in willExpiredDomainList)
         {
             logger.LogInformation("CDN {cdn name} cert `{cn}` has {t:c} expire. Upload local cert.", domain, cn, expiredTime);
 
-            logger.LogInformation("Update domain {d}", domain);
-            var certPair = certService.GetCertByDomain(domain);
+            logger.LogInformation("Update domain {d}", cert.DomainName);
+            var certPair = certService.GetCertByDomain(cert.DomainName);
             if (certPair is null)
             {
-                logger.LogError("Can not found cert for {d}", domain);
+                logger.LogError("Can not found cert for {d}", cert.DomainName);
                 continue;
             }
 
-            if (aliCdnService.TryUploadCert(domain, certPair.Value))
-                logger.LogInformation("Success upload cert for {d}.", domain);
+            if (aliCdnService.TryUploadCert(cert.DomainName, certPair.Value))
+                logger.LogInformation("Success upload cert for {d}.", cert.DomainName);
         }
 
         return true;
