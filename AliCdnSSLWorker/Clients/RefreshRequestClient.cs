@@ -4,6 +4,7 @@ using AliCdnSSLWorker.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace AliCdnSSLWorker.Clients;
+
 public class RefreshRequestClient
 {
     public HttpClient Client { get; }
