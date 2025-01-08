@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using AliCdnSSLWorker.Configs;
 using AliCdnSSLWorker.Extensions;
+using AliCdnSSLWorker.Models;
 using AliCdnSSLWorker.Services;
 using Microsoft.Extensions.Options;
 
@@ -13,20 +14,37 @@ public class ForceMonitor(ILogger<ForceMonitor> logger,
     CertService certService
     ) : BackgroundService
 {
-    private void Update()
+    private void Update(DomainInfo domain)
+    {
+        logger.LogInformation("Update domain {d}", domain);
+
+        if (certService.TryGetCertByDomain(domain, out var localCert, true))
+        {
+            if (aliCdnService.TryUploadCert(domain.OriginString, localCert!))
+            {
+                logger.LogInformation("Success upload cert for {d}.", domain);
+            }
+        }
+        else
+        {
+            {
+                logger.LogError("Can not found cert for {d}", domain);
+            }
+        }
+    }
+
+    private void UpdateAll()
     {
         foreach (var domain in certOptions.Value.DomainList)
         {
-            logger.LogInformation("Update domain {d}", domain);
-            var certPair = certService.GetCertByDomain(domain);
-            if (certPair is null)
+            if (DomainInfo.TryParse(domain, out var domainInfo))
             {
-                logger.LogError("Can not found cert for {d}", domain);
-                continue;
+                Update(domainInfo);
             }
-
-            if (aliCdnService.TryUploadCert(domain, certPair.Value))
-                logger.LogInformation("Success upload cert for {d}.", domain);
+            else
+            {
+                logger.LogWarning("Domain string `{str}` in {opt} can not be parse as domain, skip.", domain, nameof(CertConfig));
+            }
         }
     }
 
@@ -51,10 +69,20 @@ public class ForceMonitor(ILogger<ForceMonitor> logger,
              while (!stoppingToken.IsCancellationRequested)
              {
                  var ctx = listener.GetContext();
-                 Update();
-
                  using var resp = ctx.Response;
-                 resp.StatusCode = (int)HttpStatusCode.OK;
+
+                 try
+                 {
+                     UpdateAll();
+                     resp.StatusCode = (int)HttpStatusCode.OK;
+                 }
+                 catch (Exception e)
+                 {
+                     logger.LogError(e, "An error occured during update all certs.");
+                     resp.StatusCode = (int)HttpStatusCode.InternalServerError;
+                 }
+                 
+                 resp.Close();
              }
          }, stoppingToken);
     }

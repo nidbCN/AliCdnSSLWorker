@@ -31,7 +31,7 @@ public class LocalCertProvider(
     {
         try
         {
-            var cert = X509Certificate2.CreateFromPemFile(Path.Combine(path, options.Value.CertFileName), Path.Combine(identify, options.Value.PrivateKeyFileName));
+            var cert = X509Certificate2.CreateFromPemFile(Path.Combine(path, options.Value.CertFileName), Path.Combine(path, options.Value.PrivateKeyFileName));
             var certName = cert.GetNameInfo(X509NameType.SimpleName, false);
             var certContent = cert.ExportCertificatePem();
 
@@ -43,7 +43,7 @@ public class LocalCertProvider(
                     CertExpireDate = cert.NotAfter,
                     FullChain = certContent,
                     PrivateKey = keyContent!,
-                    Path = path
+                    IdentityName = path
                 });
 
             // export failed
