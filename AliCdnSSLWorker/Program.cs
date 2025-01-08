@@ -1,19 +1,15 @@
 using AliCdnSSLWorker.Clients;
 using AliCdnSSLWorker.Configs;
-using AliCdnSSLWorker.Monitors;
+using AliCdnSSLWorker.Extensions.DependencyInjection;
 using AliCdnSSLWorker.Services;
 using Microsoft.ApplicationInsights.Extensibility;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+builder.AddMonitors();
+
 builder.Services.Configure<AliCdnConfig>(
     builder.Configuration.GetSection(nameof(AliCdnConfig))
-);
-builder.Services.Configure<CertConfig>(
-    builder.Configuration.GetSection(nameof(CertConfig))
-);
-builder.Services.Configure<ForceMonitorConfig>(
-    builder.Configuration.GetSection(nameof(ForceMonitorConfig))
 );
 
 builder.Services.Configure<TelemetryConfiguration>(
@@ -26,10 +22,6 @@ builder.Logging.AddApplicationInsights(_ => { });
 builder.Services.AddHttpClient<RefreshRequestClient>();
 builder.Services.AddSingleton<RefreshRequestService>();
 builder.Services.AddSingleton<AliCdnService>();
-builder.Services.AddSingleton<CertService>();
-
-builder.Services.AddHostedService<TimerMonitor>();
-builder.Services.AddHostedService<ForceMonitor>();
 
 var host = builder.Build();
 var logger = host.Services.GetRequiredService<ILogger<Program>>();
