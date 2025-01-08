@@ -12,9 +12,12 @@ public class CertService(
 {
     private readonly Dictionary<DomainInfo, CertInfo> _normalCertDict = [];
     private readonly IList<CertInfo> _wildcardCertList = [];
+    
+    private DateTime _lastCertUpdateTime = DateTime.Now;
 
     public async Task LoadAllAsync(CancellationToken token)
-        => await Parallel.ForAsync(0, providers.Count, token, async (i, innerToken) =>
+    {
+        await Parallel.ForAsync(0, providers.Count, token, async (i, innerToken) =>
         {
             var provider = providers[i];
             logger.LogInformation("Start parallel load from provider[{index}].", i);
@@ -32,6 +35,9 @@ public class CertService(
             }
         });
 
+        _lastCertUpdateTime = DateTime.Now;
+    }
+
     public bool TryGetCertByDomain(string domain, out CertInfo? result, bool forceUpdate = false)
     {
         // parse success, use domain
@@ -45,7 +51,10 @@ public class CertService(
 
     public bool TryGetCertByDomain(DomainInfo domain, out CertInfo? result, bool forceUpdate = false)
     {
-        if(forceUpdate)
+        forceUpdate = forceUpdate
+                      || DateTime.Now - _lastCertUpdateTime >= TimeSpan.FromMinutes(options.Value.CacheTimeoutMin);
+
+        if (forceUpdate)
             LoadAllAsync(CancellationToken.None).GetAwaiter().GetResult();
 
         // full-matched

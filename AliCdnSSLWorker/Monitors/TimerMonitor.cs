@@ -5,41 +5,36 @@ using Microsoft.Extensions.Options;
 namespace AliCdnSSLWorker.Monitors;
 
 public class TimerMonitor(ILogger<TimerMonitor> logger,
-    IOptions<CertConfig> options,
     IOptions<TimerMonitorConfig> monitorOptions,
     AliCdnService aliCdnService,
     CertService certService) : BackgroundService
 {
     public bool TryUpdate()
     {
-        if (!aliCdnService.TryGetHttpsCerts(out var infos))
+        if (!aliCdnService.TryGetRemoteCerts(out var infos))
         {
             logger.LogError("Can not get CDN cert infos.");
             return false;
         }
 
+        // select certs expire before next update.
         var now = DateTime.Now;
-
-        // ReSharper disable once PossibleMultipleEnumeration
         var willExpiredDomainList = infos
-            .Where(i => options.Value.DomainList.Contains(i.DomainName))
-            .Where(i => i.CertExpireDate - now <= monitorOptions.Value.RefreshInterval)
-            .ToList();
+            .Where(i => i.CertExpireDate - now < monitorOptions.Value.RefreshInterval);
 
-        foreach (var cert in willExpiredDomainList)
+        foreach (var remoteCert in willExpiredDomainList)
         {
-            logger.LogInformation("CDN {cdn name} cert `{cn}` has {t:c} expire. Upload local cert.", domain, cn, expiredTime);
+            logger.LogInformation("Remote CDN cert `{cn}` will expire at {t:c}. Upload local cert.", remoteCert.CertCommonName, remoteCert.CertExpireDate);
 
-            logger.LogInformation("Update domain {d}", cert.DomainName);
-            var certPair = certService.GetCertByDomain(cert.DomainName);
-            if (certPair is null)
+            if (certService.TryGetCertByDomain(remoteCert.CertCommonName, out var localCert))
             {
-                logger.LogError("Can not found cert for {d}", cert.DomainName);
-                continue;
+                if (aliCdnService.TryUploadCert(remoteCert.CertCommonName.OriginString, localCert!))
+                    logger.LogInformation("Success upload cert for {d}.", remoteCert.CertCommonName);
             }
-
-            if (aliCdnService.TryUploadCert(cert.DomainName, certPair.Value))
-                logger.LogInformation("Success upload cert for {d}.", cert.DomainName);
+            else
+            {
+                logger.LogWarning("Can not found cert for `{cn}`, skip.", remoteCert.CertCommonName);
+            }
         }
 
         return true;
