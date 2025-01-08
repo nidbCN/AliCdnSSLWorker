@@ -4,27 +4,66 @@ public class DomainInfo
 {
     public required string OriginString { get; init; }
 
-    public IList<ReadOnlyMemory<char>> Parts { get; } = new List<ReadOnlyMemory<char>>();
+    public IList<ReadOnlyMemory<char>> Parts { get; }
+        = new List<ReadOnlyMemory<char>>();
+
+    public bool IsWildcard()
+    {
+        if (Parts[0].Span.Length != 1)
+            return false;
+
+        return Parts[0].Span[0] == '*';
+    }
 
     public bool Contains(DomainInfo domain)
-    {
-        if (domain.Parts[0].Span is not "*")
-            return Equals(domain);
+        => MatchedCount(domain) != 0;
 
-        // compare all element except '*' in target(sub) domain.
-        for (var i = domain.Parts.Count - 1; i >= 1; i--)
+    /// <summary>
+    /// 比较两个域名
+    /// </summary>
+    /// <param name="domain"></param>
+    /// <returns>相似的部分数。</returns>
+    public int MatchedCount(DomainInfo domain)
+    {
+        ArgumentNullException.ThrowIfNull(domain, nameof(domain));
+        if (Parts.Count == 0 || domain.Parts.Count == 0)
+            return 0;
+
+        if (domain.Parts[0].Span is not "*" || Parts[0].Span is not "*")
+            return Equals(domain) ? Parts.Count : 0;
+
+        // this object contains * as the first part
+        if (Parts.Count == domain.Parts.Count - 1)
         {
-            if (Parts[i].Span != domain.Parts[i].Span)
-                return false;
+            for (var i = domain.Parts.Count - 1; i >= 1; i--)
+            {
+                if (Parts[i].Span != domain.Parts[i].Span)
+                    return 0;
+            }
+
+            return Parts.Count;
         }
-        return true;
+
+        if (domain.Parts.Count == Parts.Count - 1)
+        {
+            for (var i = Parts.Count - 1; i >= 1; i--)
+            {
+                if (Parts[i].Span != domain.Parts[i].Span)
+                    return 0;
+            }
+
+            return domain.Parts.Count;
+        }
+
+        // not start with '*', not equal
+        return 0;
     }
 
     public static DomainInfo Parse(string domain)
     {
         var result = new DomainInfo
         {
-            OriginString = domain;
+            OriginString = domain,
         };
         var mem = domain.AsMemory();
 
@@ -42,15 +81,43 @@ public class DomainInfo
         return result;
     }
 
+    public static bool TryParse(string domain, out DomainInfo result)
+    {
+        result = new()
+        {
+            OriginString = domain,
+        };
+
+        var mem = domain.AsMemory();
+
+        var i = mem.Span.IndexOf('.');
+        if (i == -1)
+            return false;
+
+        do
+        {
+            result.Parts.Add(mem[..i]);
+            mem = mem[(i + 1)..];
+        } while ((i = mem.Span.IndexOf('.')) != -1);
+
+        result.Parts.Add(mem);
+        return true;
+    }
+
     public override string ToString()
         => OriginString;
 
     public override bool Equals(object? obj)
     {
         if (obj is null) return false;
-        if (ReferenceEquals(this, obj)) return true;
+        if (ReferenceEquals(this, obj))
+            return true;
 
-        if (obj is not DomainInfo target) return false;
+        if (obj is string domain)
+            return OriginString == domain;
+
+        if (obj is not DomainInfo target)
+            return false;
 
         if (target.Parts.Count > Parts.Count || target.Parts.Count != Parts.Count)
             return false;
