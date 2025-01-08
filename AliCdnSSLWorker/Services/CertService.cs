@@ -5,25 +5,19 @@ using Microsoft.Extensions.Options;
 
 namespace AliCdnSSLWorker.Services;
 
-public class CertService
+[Obsolete]
+public class CertService(
+    ILogger<CertService> logger,
+    IOptions<CertConfig> options)
 {
-    private readonly ILogger<CertService> _logger;
-    private readonly IOptions<CertConfig> _options;
+    private readonly ILogger<CertService> _logger = logger;
     private DateTime _lastScan;
-    private readonly Dictionary<string, DomainCertInfo> _certList2 = [];
 
-    private readonly Dictionary<string, (string, string)> _certList = [];
+    private readonly Dictionary<string, CertInfo> _normalCertDict = [];
+    private readonly IList<CertInfo> _wildcardCertList = [];
 
     private const string CertBeginFlag = "-----BEGIN CERTIFICATE-----";
     private const string CertEndFlag = "-----END CERTIFICATE-----";
-
-    public CertService(ILogger<CertService> logger, IOptions<CertConfig> options)
-    {
-        _logger = logger;
-        _options = options;
-
-        ScanLocalCertAsync().GetAwaiter().GetResult();
-    }
 
     public void AddCert(string fullChain, string privateKey)
     {
@@ -41,110 +35,59 @@ public class CertService
 
         var content = span[..^fullChain.Length];
         var cert = new X509Certificate2(Convert.FromBase64String(content.ToString()));
-        var certDomain = cert.GetNameInfo(X509NameType.SimpleName, false);
 
-    }
-
-    public bool TryGetCertByDomain(string domain, out DomainCertInfo? result)
-    {
-        if (_certList2.TryGetValue(domain, out result))
+        var certName = cert.GetNameInfo(X509NameType.SimpleName, false);
+        if (DomainInfo.TryParse(certName, out var certDomain))
         {
-            return true;
-        }
-
-        var span = domain.AsSpan();
-    }
-
-    public (string, string)? GetCertByDomain(string domain)
-    {
-        ArgumentNullException.ThrowIfNull(domain);
-
-        var time = DateTime.Now - _lastScan;
-        if (time > TimeSpan.FromMinutes(_options.Value.CacheTimeoutMin))
-        {
-            ScanLocalCertAsync().Wait();
-            _lastScan = DateTime.Now;
-        }
-
-        _certList.TryGetValue(domain, out var certPair);
-        return certPair;
-    }
-
-    private async Task ScanLocalCertAsync()
-    {
-        var dir = new DirectoryInfo(_options.Value.CertSearchPath);
-        if (!dir.Exists)
-        {
-            _logger.LogError("Dir {d} isn't exists!", dir.FullName);
-            return;
-        }
-
-        var dirList = _options.Value.RecursionSearch
-            ? dir.GetDirectories()
-            : [dir];
-
-        foreach (var subDir in dirList)
-        {
-            var certFile = subDir
-                .GetFiles()
-                .FirstOrDefault(f => f.Name == _options.Value.CertFileName);
-
-            var privateKeyFile = subDir
-                .GetFiles()
-                .FirstOrDefault(f => f.Name == _options.Value.PrivateKeyFileName);
-
-            if (certFile is null || privateKeyFile is null)
+            CertInfo certInfo = new()
             {
-                _logger.LogWarning("Can not found cert or private key file, skip {d}", subDir.Name);
-                continue;
-            }
+                CertCommonName = certDomain,
+                CertExpireDate = cert.NotAfter,
+                FullChain = fullChain,
+                PrivateKey = privateKey
+            };
 
-            using var certReader = certFile.OpenText();
-            var certPem = await certReader.ReadToEndAsync();
-
-            if (string.IsNullOrWhiteSpace(certPem) || !certPem.StartsWith(CertBeginFlag))
+            if (certDomain.IsWildcard())
             {
-                _logger.LogWarning("Can not found BEGIN CERT flag, skip.");
-                continue;
-            }
-
-            // 是证书
-            var certEndIndex = certPem.IndexOf(CertEndFlag, StringComparison.Ordinal);
-            var certContent = certPem.Substring(CertBeginFlag.Length, certEndIndex - CertBeginFlag.Length);
-            var cert = new X509Certificate2(Convert.FromBase64String(certContent));
-
-            var certDomain = cert.GetNameInfo(X509NameType.SimpleName, false);
-
-            IList<string> matchedDomainList;
-
-            if (certDomain.StartsWith("*."))
-            {
-                matchedDomainList = _options.Value
-                    .DomainList
-                    .Where(certDomain.EndsWith)
-                    .ToArray();
-            }
-            else if (_options.Value.DomainList.Contains(certDomain))
-            {
-                matchedDomainList = new List<string> { certDomain };
+                _wildcardCertList.Add(certInfo);
             }
             else
             {
-                // 不监听此域名
-                _logger.LogInformation("CN `{cert domain}` in cert not match any domain, skip.", certDomain);
-                continue;
-            }
-
-            _logger.LogInformation("CN `{cert domain}` in cert matched domain `{match list}`", certDomain, string.Join(',', matchedDomainList));
-
-            var keyPem = await privateKeyFile.OpenText().ReadToEndAsync();
-
-            _logger.LogInformation("Success load cert, cert content: `{c}`, private `{p}`", certPem, keyPem);
-
-            foreach (var matchDomain in matchedDomainList)
-            {
-                _certList[matchDomain] = (certPem, keyPem);
+                _normalCertDict.Add(certDomain.OriginString, certInfo);
             }
         }
+        else
+        {
+            throw new ArgumentException("Invalid public key.", nameof(fullChain));
+        }
     }
+
+    public bool TryGetCertByDomain(string domain, out CertInfo? result)
+    {
+        if (_normalCertDict.TryGetValue(domain, out result))
+            return true;
+
+        if (!DomainInfo.TryParse(domain, out var domainInfo))
+            return false;
+
+        return TryGetCertByDomainCore(domainInfo, out result);
+    }
+
+    public bool TryGetCertByDomain(DomainInfo domain, out CertInfo? result)
+    {
+        if (_normalCertDict.TryGetValue(domain.OriginString, out result))
+            return true;
+
+        return TryGetCertByDomainCore(domain, out result);
+    }
+
+    public bool TryGetCertByDomainCore(DomainInfo domain, out CertInfo? result)
+    {
+        result = _wildcardCertList
+            .OrderBy(c => c.CertCommonName.MatchedCount(domain))
+            .FirstOrDefault();
+
+        return result is not null;
+    }
+
 }
