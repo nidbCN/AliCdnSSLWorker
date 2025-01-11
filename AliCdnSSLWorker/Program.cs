@@ -7,6 +7,7 @@ using Microsoft.ApplicationInsights.Extensibility;
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.AddMonitors();
+builder.AddCertProviders();
 
 builder.Services.Configure<AliCdnConfig>(
     builder.Configuration.GetSection(nameof(AliCdnConfig))
