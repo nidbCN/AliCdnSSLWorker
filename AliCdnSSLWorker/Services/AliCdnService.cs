@@ -118,14 +118,14 @@ public class AliCdnService
             if (!matched.Invoke(remoteCert))
                 continue;
 
-            _logger.LogInformation("Remote cert `{cn}` will expire at {t:c}. Upload local cert.", remoteCert.CertCommonName, remoteCert.CertExpireDate);
+            _logger.LogInformation("Remote cert `{cn}` will expire at {date:g}. Upload local cert.", remoteCert.CertCommonName, remoteCert.CertExpireDate);
 
             if (_certService.TryGetCertByDomain(remoteCert.CertCommonName, out var localCert))
             {
                 if (TryUploadCert(remoteCert.CertCommonName.OriginString, localCert!))
-                    _logger.LogInformation("Success upload cert for `{d}`.", remoteCert.CertCommonName);
+                    _logger.LogInformation("Success upload cert for `{domain}`.", remoteCert.CertCommonName);
                 else
-                    _logger.LogWarning("Failed upload cert for `{d}`, skip.", remoteCert.CertCommonName);
+                    _logger.LogWarning("Failed upload cert for `{domain}`, skip.", remoteCert.CertCommonName);
             }
             else
             {

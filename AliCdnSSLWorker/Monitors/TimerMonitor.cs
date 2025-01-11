@@ -15,7 +15,7 @@ public class TimerMonitor(
         // select certs expire before next update.
         var now = DateTime.Now;
         var interval = monitorOptions.Value.RefreshInterval;
-        return aliCdnService.TryUploadAllCert(r => r.CertExpireDate - interval > now);
+        return aliCdnService.TryUploadAllCert(r => r.CertExpireDate <= now + interval);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
