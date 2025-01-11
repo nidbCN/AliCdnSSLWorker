@@ -8,7 +8,7 @@ namespace AliCdnSSLWorker.Services;
 public class CertService(
     ILogger<CertService> logger,
     IOptions<CertConfig> options,
-    ServiceProvider serviceProvider)
+    IServiceProvider serviceProvider)
 {
     private readonly Dictionary<DomainInfo, CertInfo> _normalCertDict = [];
     private readonly IList<CertInfo> _wildcardCertList = [];
