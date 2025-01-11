@@ -35,24 +35,22 @@ public class AliCdnService
         _logger = logger;
     }
 
-    public bool TryGetRemoteCerts(out IEnumerable<CertInfo> infos)
+    public bool TryGetRemoteCerts(out IEnumerable<RemoteCertInfo>? infos)
     {
         var req = new DescribeCdnHttpsDomainListRequest();
+        infos = null;
 
         try
         {
             var resp = _apiClient.DescribeCdnHttpsDomainListWithOptions(req, _apiRuntimeOptions);
-            
+
             // Request success
             if (resp.StatusCode == 200)
             {
-                infos = resp.Body.CertInfos.CertInfo.Select(c => new CertInfo
+                infos = resp.Body.CertInfos.CertInfo.Select(c => new RemoteCertInfo
                 {
                     CertExpireDate = DateTime.Parse(c.CertExpireTime),
                     CertCommonName = DomainInfo.Parse(c.CertCommonName),
-                    IdentityName = c.CertName,
-                    FullChain = null,
-                    PrivateKey = null
                 });
 
                 return true;
@@ -60,8 +58,6 @@ public class AliCdnService
 
             // Request failed
             _logger.LogWarning("Api return status {status}, request failed.", resp.StatusCode);
-            infos = [];
-            return false;
         }
         catch (TeaException error)
         {
@@ -72,7 +68,6 @@ public class AliCdnService
             _logger.LogError(e, "An error occured during describe cdn domain list, msg: {m}", e.Message);
         }
 
-        infos = Array.Empty<CertInfo>();
         return false;
     }
 
@@ -81,14 +76,14 @@ public class AliCdnService
         var req = new SetCdnDomainSSLCertificateRequest
         {
             DomainName = domain,
-            CertName = domain + DateTime.Now.ToShortDateString(),
+            CertName = $"autoupdate_{domain}_{DateTime.Now.ToShortDateString()}",
             CertType = "upload",
             SSLProtocol = "on",
             SSLPub = certInfo.FullChain,
             SSLPri = certInfo.PrivateKey,
         };
 
-        _logger.LogInformation("Upload cert, cert `{c}`.", certInfo.CertCommonName);
+        _logger.LogInformation("Upload cert with CN `{c}` for domain `{d}`.", certInfo.CertCommonName, domain);
 
         try
         {

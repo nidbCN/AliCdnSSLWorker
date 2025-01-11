@@ -4,6 +4,8 @@ namespace AliCdnSSLWorker.CertProvider;
 
 public interface ICertProvider
 {
+    public string GetName();
+
     public Task<CertInfo?> GetMatchedCertByDomain(DomainInfo domain)
         => GetMatchedCertByDomain(domain, CancellationToken.None);
 
