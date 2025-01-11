@@ -104,4 +104,6 @@ public class LocalCertProvider(
 
         invoked(cert);
     }
+
+    public string GetName() => nameof(LocalCertProvider);
 }
