@@ -13,10 +13,11 @@ namespace AliCdnSSLWorker.Services;
 public class AliCdnService
 {
     private readonly ILogger<AliCdnService> _logger;
+    private readonly CertService _certService;
     private readonly ApiClient _apiClient;
     private readonly RuntimeOptions _apiRuntimeOptions = new();
 
-    public AliCdnService(ILogger<AliCdnService> logger, IOptions<AliCdnConfig> options)
+    public AliCdnService(ILogger<AliCdnService> logger, IOptions<AliCdnConfig> options, CertService certService)
     {
         var credentialClient = new CredClient(
             new()
@@ -33,6 +34,7 @@ public class AliCdnService
         });
 
         _logger = logger;
+        _certService = certService;
     }
 
     public bool TryGetRemoteCerts(out IEnumerable<RemoteCertInfo>? infos)
@@ -101,5 +103,36 @@ public class AliCdnService
         }
 
         return false;
+    }
+
+    public bool TryUploadAllCert(Func<RemoteCertInfo, bool> matched)
+    {
+        if (!TryGetRemoteCerts(out var infos))
+        {
+            _logger.LogError("Can not get remote cert infos from CDN.");
+            return false;
+        }
+
+        foreach (var remoteCert in infos!)
+        {
+            if (!matched.Invoke(remoteCert))
+                continue;
+
+            _logger.LogInformation("Remote cert `{cn}` will expire at {t:c}. Upload local cert.", remoteCert.CertCommonName, remoteCert.CertExpireDate);
+
+            if (_certService.TryGetCertByDomain(remoteCert.CertCommonName, out var localCert))
+            {
+                if (TryUploadCert(remoteCert.CertCommonName.OriginString, localCert!))
+                    _logger.LogInformation("Success upload cert for `{d}`.", remoteCert.CertCommonName);
+                else
+                    _logger.LogWarning("Failed upload cert for `{d}`, skip.", remoteCert.CertCommonName);
+            }
+            else
+            {
+                _logger.LogWarning("Can not found cert for `{cn}`, skip.", remoteCert.CertCommonName);
+            }
+        }
+
+        return true;
     }
 }
