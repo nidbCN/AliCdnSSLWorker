@@ -8,16 +8,17 @@ namespace AliCdnSSLWorker.Services;
 public class CertService(
     ILogger<CertService> logger,
     IOptions<CertConfig> options,
-    IList<ICertProvider> providers)
+    ServiceProvider serviceProvider)
 {
     private readonly Dictionary<DomainInfo, CertInfo> _normalCertDict = [];
     private readonly IList<CertInfo> _wildcardCertList = [];
+    private readonly IEnumerable<ICertProvider> _providers = serviceProvider.GetServices<ICertProvider>();
 
     private DateTime _lastCertUpdateTime = DateTime.Now;
 
     public async Task LoadAllAsync(CancellationToken token)
     {
-        await Parallel.ForEachAsync(providers, token, async (provider, innerToken) =>
+        await Parallel.ForEachAsync(_providers, token, async (provider, innerToken) =>
         {
             logger.LogInformation("Start parallel load from provider `{name}`.", provider.GetName());
             var list = await provider.GetAllCerts(innerToken);

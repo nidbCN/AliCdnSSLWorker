@@ -2,5 +2,5 @@
 
 public record MonitorConfigBase
 {
-    public bool Enable { get; init; } = false;
+    public bool Enable { get; init; } = true;
 }
