@@ -23,7 +23,7 @@ public static class InterfaceServiceCollectionExtension
         if (timerMonitorConfig.Get<TimerMonitorConfig>()?.Enable ?? false)
         {
             builder.Services.Configure<TimerMonitorConfig>(timerMonitorConfig);
-            builder.Services.AddHostedService<ForceMonitor>();
+            builder.Services.AddHostedService<TimerMonitor>();
         }
 
         builder.Services.AddSingleton<CertService>();
