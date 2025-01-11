@@ -4,8 +4,7 @@ public class DomainInfo
 {
     public required string OriginString { get; init; }
 
-    public IList<ReadOnlyMemory<char>> Parts { get; }
-        = new List<ReadOnlyMemory<char>>();
+    public IList<ReadOnlyMemory<char>> Parts { get; } = [];
 
     public bool IsWildcard()
     {
