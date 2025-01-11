@@ -1,4 +1,5 @@
-﻿using AliCdnSSLWorker.Configs;
+﻿using AliCdnSSLWorker.CertProvider;
+using AliCdnSSLWorker.Configs;
 using AliCdnSSLWorker.Monitors;
 using AliCdnSSLWorker.Services;
 
@@ -6,7 +7,7 @@ namespace AliCdnSSLWorker.Extensions.DependencyInjection;
 
 public static class InterfaceServiceCollectionExtension
 {
-    public static void AddMonitors(this HostApplicationBuilder builder)
+    public static void AddMonitors(this IHostApplicationBuilder builder)
     {
         builder.Services.Configure<CertConfig>(
             builder.Configuration.GetSection(nameof(CertConfig))
@@ -27,5 +28,15 @@ public static class InterfaceServiceCollectionExtension
         }
 
         builder.Services.AddSingleton<CertService>();
+    }
+
+    public static void AddCertProviders(this IHostApplicationBuilder builder)
+    {
+        var forceMonitorConfig = builder.Configuration.GetSection(nameof(LocalCertProviderConfig));
+        if (forceMonitorConfig.Get<LocalCertProviderConfig>() is not null)
+        {
+            builder.Services.Configure<LocalCertProviderConfig>(forceMonitorConfig);
+            builder.Services.AddSingleton<LocalCertProvider>();
+        }
     }
 }
