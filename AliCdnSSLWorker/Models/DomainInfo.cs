@@ -14,9 +14,6 @@ public class DomainInfo
         return Parts[0].Span[0] == '*';
     }
 
-    public bool Contains(DomainInfo domain)
-        => MatchedCount(domain) != 0;
-
     /// <summary>
     /// 比较两个域名
     /// </summary>
@@ -28,10 +25,11 @@ public class DomainInfo
         if (Parts.Count == 0 || domain.Parts.Count == 0)
             return 0;
 
-        if (domain.Parts[0].Span is not "*" || Parts[0].Span is not "*")
+        // not wildcard
+        if (!domain.IsWildcard() || !IsWildcard())
             return Equals(domain) ? Parts.Count : 0;
 
-        // this object contains * as the first part
+        // wildcard
         if (Parts.Count == domain.Parts.Count - 1)
         {
             for (var i = domain.Parts.Count - 1; i >= 1; i--)

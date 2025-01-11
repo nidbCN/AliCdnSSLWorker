@@ -12,7 +12,7 @@ public class CertService(
 {
     private readonly Dictionary<DomainInfo, CertInfo> _normalCertDict = [];
     private readonly IList<CertInfo> _wildcardCertList = [];
-    
+
     private DateTime _lastCertUpdateTime = DateTime.Now;
 
     public async Task LoadAllAsync(CancellationToken token)
@@ -23,6 +23,24 @@ public class CertService(
             var list = await provider.GetAllCerts(innerToken);
             foreach (var cert in list)
             {
+                // white list check
+                if (!options.Value.DomainWhiteList?.Any(d =>
+                    DomainInfo.Parse(d).MatchedCount(cert.CertCommonName) != 0) ?? false)
+                {
+                    // not in white list
+                    logger.LogWarning("Current added cert with CN `{cn}` not match white list, skip.", cert.CertCommonName);
+                    continue;
+                }
+
+                // black list check
+                if (options.Value.DomainBlackList?.Any(d =>
+                    DomainInfo.Parse(d).MatchedCount(cert.CertCommonName) != 0) ?? false)
+                {
+                    // in black list
+                    logger.LogWarning("Current added cert with CN `{cn}` match black list, skip.", cert.CertCommonName);
+                    continue;
+                }
+
                 if (cert.CertCommonName.IsWildcard())
                 {
                     _wildcardCertList.Add(cert);
