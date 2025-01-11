@@ -17,10 +17,9 @@ public class CertService(
 
     public async Task LoadAllAsync(CancellationToken token)
     {
-        await Parallel.ForAsync(0, providers.Count, token, async (i, innerToken) =>
+        await Parallel.ForEachAsync(providers, token, async (provider, innerToken) =>
         {
-            var provider = providers[i];
-            logger.LogInformation("Start parallel load from provider[{index}].", i);
+            logger.LogInformation("Start parallel load from provider `{name}`.", provider.GetName());
             var list = await provider.GetAllCerts(innerToken);
             foreach (var cert in list)
             {

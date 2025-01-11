@@ -13,18 +13,19 @@ public class TimerMonitor(ILogger<TimerMonitor> logger,
     {
         if (!aliCdnService.TryGetRemoteCerts(out var infos))
         {
-            logger.LogError("Can not get CDN cert infos.");
+            logger.LogError("Can not get remote cert infos from CDN.");
             return false;
         }
 
         // select certs expire before next update.
         var now = DateTime.Now;
-        var willExpiredDomainList = infos
-            .Where(i => i.CertExpireDate - now < monitorOptions.Value.RefreshInterval);
 
-        foreach (var remoteCert in willExpiredDomainList)
+        foreach (var remoteCert in infos!)
         {
-            logger.LogInformation("Remote CDN cert `{cn}` will expire at {t:c}. Upload local cert.", remoteCert.CertCommonName, remoteCert.CertExpireDate);
+            if (remoteCert.CertExpireDate - now > monitorOptions.Value.RefreshInterval)
+                continue;
+
+            logger.LogInformation("Remote cert `{cn}` will expire at {t:c}. Upload local cert.", remoteCert.CertCommonName, remoteCert.CertExpireDate);
 
             if (certService.TryGetCertByDomain(remoteCert.CertCommonName, out var localCert))
             {
