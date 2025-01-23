@@ -64,7 +64,7 @@ public class LocalCertProvider(
         }
         catch (Exception e)
         {
-            logger.LogError(e, "Load cert error.");
+            logger.LogError(e, "An error occured while loading cert.");
         }
 
         return Task.FromResult<CertInfo?>(null);
@@ -105,6 +105,8 @@ public class LocalCertProvider(
             logger.LogWarning("Can not found cert or private key file, skip {d}", dir.Name);
             return;
         }
+
+        logger.LogDebug("Found cert file `{cert}` and key file `{key}`.", certFile[0].FullName, privateFile[0].FullName);
 
         var cert = await GetMatchedCertByDomain(dir.FullName, token);
 
