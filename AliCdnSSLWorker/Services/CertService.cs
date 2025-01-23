@@ -34,7 +34,7 @@ public class CertService
             foreach (var cert in list)
             {
                 // white list check
-                if (!_options.Value.DomainWhiteList?.All(d =>
+                if (_options.Value.DomainWhiteList?.All(d =>
                     DomainInfo.Parse(d).MatchedCount(cert.CertCommonName) == 0) ?? false)
                 {
                     // not match any domain in white list
