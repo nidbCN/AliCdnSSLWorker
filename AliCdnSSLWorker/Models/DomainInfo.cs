@@ -126,7 +126,4 @@ public class DomainInfo
 
     public override int GetHashCode()
         => Parts.GetHashCode();
-
-    protected bool Equals(DomainInfo other)
-        => Parts.Equals(other.Parts);
 }
