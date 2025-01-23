@@ -5,6 +5,12 @@
 这玩意做了什么？
 每隔一段时间读取一下你的证书，然后看看阿里云CDN上面的证书快过期没，过期的话就把它换了。如果阿里云上面这个域名没开SSL，但是你列表里面写了，也有证书那就给开了。
 
+## 发行
+
+开发版： `registry.cn-beijing.aliyuncs.com/nidb-cr/alicdn-ssl-worker:git`
+
+稳定版： `registry.cn-beijing.aliyuncs.com/nidb-cr/alicdn-ssl-worker:v8.1.1.0`
+
 ## 使用
 
 ### 部署
