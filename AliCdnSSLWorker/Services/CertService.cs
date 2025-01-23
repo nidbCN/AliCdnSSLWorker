@@ -34,10 +34,10 @@ public class CertService
             foreach (var cert in list)
             {
                 // white list check
-                if (!_options.Value.DomainWhiteList?.Any(d =>
-                    DomainInfo.Parse(d).MatchedCount(cert.CertCommonName) != 0) ?? false)
+                if (!_options.Value.DomainWhiteList?.All(d =>
+                    DomainInfo.Parse(d).MatchedCount(cert.CertCommonName) == 0) ?? false)
                 {
-                    // not in white list
+                    // not match any domain in white list
                     _logger.LogWarning("Current added cert with CN `{cn}` not match white list, skip.", cert.CertCommonName);
                     continue;
                 }
@@ -46,7 +46,7 @@ public class CertService
                 if (_options.Value.DomainBlackList?.Any(d =>
                     DomainInfo.Parse(d).MatchedCount(cert.CertCommonName) != 0) ?? false)
                 {
-                    // in black list
+                    // has matched domain in black list
                     _logger.LogWarning("Current added cert with CN `{cn}` match black list, skip.", cert.CertCommonName);
                     continue;
                 }
