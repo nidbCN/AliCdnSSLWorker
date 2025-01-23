@@ -11,7 +11,7 @@ public class CertService
     private readonly IOptions<CertConfig> _options;
     private readonly IEnumerable<ICertProvider> _providers;
 
-    private readonly Dictionary<DomainInfo, CertInfo> _normalCertDict = [];
+    private readonly Dictionary<string, CertInfo> _normalCertDict = [];
     private readonly IList<CertInfo> _wildcardCertList = [];
 
     private DateTime _lastCertUpdateTime = DateTime.Now;
@@ -30,8 +30,8 @@ public class CertService
         await Parallel.ForEachAsync(_providers, token, async (provider, innerToken) =>
         {
             _logger.LogInformation("Start parallel load from provider `{name}`.", provider.GetName());
-            var list = await provider.GetAllCerts(innerToken);
-            foreach (var cert in list)
+            var allCerts = await provider.GetAllCerts(innerToken);
+            foreach (var cert in allCerts)
             {
                 // white list check
                 if (_options.Value.DomainWhiteList?.All(d =>
@@ -57,7 +57,7 @@ public class CertService
                 }
                 else
                 {
-                    _normalCertDict.Add(cert.CertCommonName, cert);
+                    _normalCertDict.Add(cert.CertCommonName.ToString(), cert);
                 }
             }
         });
@@ -85,11 +85,9 @@ public class CertService
             LoadAllAsync(CancellationToken.None).GetAwaiter().GetResult();
 
         // full-matched
-        if (_normalCertDict.TryGetValue(domain, out result))
-            return true;
-
-        // wildcard matched
-        return TryGetWildcardCert(domain, out result);
+        return _normalCertDict.TryGetValue(domain.ToString(), out result) ||
+               // wildcard matched
+               TryGetWildcardCert(domain, out result);
     }
 
     private bool TryGetWildcardCert(DomainInfo domain, out CertInfo? result)
