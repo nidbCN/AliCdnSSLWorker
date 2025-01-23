@@ -36,13 +36,13 @@ public static class InterfaceServiceCollectionExtension
 
     public static void AddCertProviders(this IHostApplicationBuilder builder)
     {
-        var forceMonitorConfig = builder.Configuration.GetSection(nameof(LocalCertProviderConfig));
-        if (forceMonitorConfig.Get<LocalCertProviderConfig>() is not null)
+        var localProviderConfig = builder.Configuration.GetSection(nameof(LocalCertProviderConfig));
+        if (localProviderConfig.Get<LocalCertProviderConfig>() is not null)
         {
             builder.Services
                 .AddOptions<LocalCertProviderConfig>()
-                .Bind(forceMonitorConfig);
-            builder.Services.AddSingleton<LocalCertProvider>();
+                .Bind(localProviderConfig);
+            builder.Services.AddSingleton<ICertProvider, LocalCertProvider>();
         }
     }
 }
