@@ -5,7 +5,8 @@ WORKDIR /app
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["AliCdnSSLWorker/AliCdnSSLWorker.csproj", "AliCdnSSLWorker"]
+COPY ["AliCdnSSLWorker/AliCdnSSLWorker.csproj", "AliCdnSSLWorker/"]
+COPY ["AliCdnSSLWorker.Test/AliCdnSSLWorker.Test.csproj", "AliCdnSSLWorker.Test/"]
 RUN dotnet restore "./AliCdnSSLWorker/AliCdnSSLWorker.csproj"
 COPY . .
 WORKDIR "/src/."
