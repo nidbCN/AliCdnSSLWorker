@@ -25,35 +25,38 @@ public class DomainInfo
         if (Parts.Count == 0 || domain.Parts.Count == 0)
             return 0;
 
+        if (domain.IsWildcard())
+        {
+            // input domain is wildcard
+            if (Parts.Count < domain.Parts.Count)
+                return 0;
+
+            for (var i = 1; i < domain.Parts.Count; i++)
+            {
+                if (domain.Parts[^i].Span.ToString() != Parts[^i].Span.ToString())
+                    return 0;
+            }
+
+            return domain.Parts.Count - 1;
+        }
+
+        if (IsWildcard())
+        {
+            // this domain is wildcard
+            if (domain.Parts.Count < Parts.Count)
+                return 0;
+
+            for (var i = 1; i < Parts.Count; i++)
+            {
+                if (Parts[^i].Span.ToString() != domain.Parts[^i].Span.ToString())
+                    return 0;
+            }
+
+            return Parts.Count - 1;
+        }
+
         // not wildcard
-        if (!domain.IsWildcard() || !IsWildcard())
-            return Equals(domain) ? Parts.Count : 0;
-
-        // wildcard
-        if (Parts.Count == domain.Parts.Count - 1)
-        {
-            for (var i = domain.Parts.Count - 1; i >= 1; i--)
-            {
-                if (Parts[i].Span != domain.Parts[i].Span)
-                    return 0;
-            }
-
-            return Parts.Count;
-        }
-
-        if (domain.Parts.Count == Parts.Count - 1)
-        {
-            for (var i = Parts.Count - 1; i >= 1; i--)
-            {
-                if (Parts[i].Span != domain.Parts[i].Span)
-                    return 0;
-            }
-
-            return domain.Parts.Count;
-        }
-
-        // not start with '*', not equal
-        return 0;
+        return Equals(domain) ? Parts.Count : 0;
     }
 
     public static DomainInfo Parse(string domain)
@@ -120,7 +123,7 @@ public class DomainInfo
             return false;
 
         return !Parts
-            .Where((t, i) => target.Parts[i].Span != t.Span)
+            .Where((t, i) => target.Parts[i].Span.ToString() != t.Span.ToString())
             .Any();
     }
 
