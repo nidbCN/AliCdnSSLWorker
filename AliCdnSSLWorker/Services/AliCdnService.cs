@@ -105,7 +105,7 @@ public class AliCdnService
         return false;
     }
 
-    public bool TryUploadAllCert(Func<RemoteCertInfo, bool> matched)
+    public bool TryUploadAllCert(Func<RemoteCertInfo, bool> matched, bool force = false)
     {
         if (!TryGetRemoteCerts(out var infos))
         {
@@ -120,7 +120,7 @@ public class AliCdnService
 
             _logger.LogInformation("Remote cert `{cn}` will expire at {date:g}. Upload local cert.", remoteCert.CertCommonName, remoteCert.CertExpireDate);
 
-            if (_certService.TryGetCertByDomain(remoteCert.CertCommonName, out var localCert))
+            if (_certService.TryGetCertByDomain(remoteCert.CertCommonName, out var localCert, force))
             {
                 if (TryUploadCert(remoteCert.CertCommonName.OriginString, localCert!))
                     _logger.LogInformation("Success upload cert for `{domain}`.", remoteCert.CertCommonName);

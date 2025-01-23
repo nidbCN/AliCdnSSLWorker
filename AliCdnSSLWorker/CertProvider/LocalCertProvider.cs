@@ -22,6 +22,17 @@ public class LocalCertProvider(
              .FirstOrDefault();
 
     /// <summary>
+    /// Get matched cert by domain and provider
+    /// </summary>
+    /// <param name="domain"></param>
+    /// <param name="providerName"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    public async Task<CertInfo?> GetMatchedCertByDomainFromProvider(DomainInfo domain, string providerName, CancellationToken token)
+            => (await GetAllCerts(token)).OrderBy(c => c.CertCommonName.MatchedCount(domain))
+             .FirstOrDefault(c => c.Provider.GetName() == providerName);
+
+    /// <summary>
     /// Get matched cert by file identify
     /// </summary>
     /// <param name="path">file full name</param>
@@ -43,7 +54,8 @@ public class LocalCertProvider(
                     CertExpireDate = cert.NotAfter,
                     FullChain = certContent,
                     PrivateKey = keyContent!,
-                    IdentityName = path
+                    IdentityName = path,
+                    Provider = this
                 });
 
             // export failed

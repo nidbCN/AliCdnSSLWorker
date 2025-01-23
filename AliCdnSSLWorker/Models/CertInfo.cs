@@ -1,4 +1,6 @@
-﻿namespace AliCdnSSLWorker.Models;
+﻿using AliCdnSSLWorker.CertProvider;
+
+namespace AliCdnSSLWorker.Models;
 
 public record CertInfo
 {
@@ -7,4 +9,5 @@ public record CertInfo
     public required string? FullChain { get; set; }
     public required string? PrivateKey { get; set; }
     public required string IdentityName { get; set; }
+    public required ICertProvider Provider { get; init; }
 }

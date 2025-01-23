@@ -11,7 +11,7 @@ public class ForceMonitor(
     AliCdnService aliCdnService
     ) : BackgroundService
 {
-    private bool TryUpdateAll()
+    public bool TryUpdateAll()
         => aliCdnService.TryUploadAllCert(r => true);
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
