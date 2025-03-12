@@ -51,13 +51,20 @@ public class CertService
                     continue;
                 }
 
+                var name = cert.CertCommonName.ToString();
                 if (cert.CertCommonName.IsWildcard())
                 {
+                    var certInList = _wildcardCertList
+                        .FirstOrDefault(c => c.CertCommonName.ToString() == name);
+
+                    if (certInList != null)
+                        _wildcardCertList.Remove(certInList);
+
                     _wildcardCertList.Add(cert);
                 }
                 else
                 {
-                    _normalCertDict.Add(cert.CertCommonName.ToString(), cert);
+                    _normalCertDict[name] = cert;
                 }
             }
         });
