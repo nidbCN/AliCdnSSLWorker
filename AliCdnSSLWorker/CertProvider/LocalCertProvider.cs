@@ -21,11 +21,6 @@ public class LocalCertProvider(
         => (await GetAllCerts(token)).OrderBy(c => c.CertCommonName.MatchedCount(domain))
              .FirstOrDefault();
 
-    public CertInfo? GetMatchedCertByDomain(string identify, CancellationToken token)
-    {
-        throw new NotImplementedException();
-    }
-
     /// <summary>
     /// Get matched cert by domain and provider
     /// </summary>

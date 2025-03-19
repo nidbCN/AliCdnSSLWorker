@@ -99,9 +99,10 @@ public class CertService
 
     private bool TryGetWildcardCert(DomainInfo domain, out CertInfo? result)
     {
-        result = _wildcardCertList
-            .OrderBy(c => c.CertCommonName.MatchedCount(domain))
-            .FirstOrDefault();
+        (_, result) = _wildcardCertList
+            .Select(c => (c.CertCommonName.MatchedCount(domain), c))
+            .Where(t => t.Item1 > 0)
+            .MaxBy(t => t.Item1);
 
         return result is not null;
     }
