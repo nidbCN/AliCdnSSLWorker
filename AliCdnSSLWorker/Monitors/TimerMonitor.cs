@@ -28,6 +28,10 @@ public class TimerMonitor(
                 {
                     logger.LogWarning("Upload failed.");
                 }
+                else
+                {
+                    logger.LogInformation("Upload success.");
+                }
             }
             catch (Exception ex)
             {

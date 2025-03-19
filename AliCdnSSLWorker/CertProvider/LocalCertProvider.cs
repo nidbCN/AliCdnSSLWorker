@@ -21,34 +21,36 @@ public class LocalCertProvider(
         => (await GetAllCerts(token)).OrderBy(c => c.CertCommonName.MatchedCount(domain))
              .FirstOrDefault();
 
+    public CertInfo? GetMatchedCertByDomain(string identify, CancellationToken token)
+    {
+        throw new NotImplementedException();
+    }
+
     /// <summary>
     /// Get matched cert by domain and provider
     /// </summary>
     /// <param name="domain"></param>
-    /// <param name="providerName"></param>
     /// <param name="token"></param>
     /// <returns></returns>
-    public async Task<CertInfo?> GetMatchedCertByDomainFromProvider(DomainInfo domain, string providerName, CancellationToken token)
+    public async Task<CertInfo?> GetMatchedCertByDomainFromProvider<TProvider>(DomainInfo domain, CancellationToken token)
             => (await GetAllCerts(token)).OrderBy(c => c.CertCommonName.MatchedCount(domain))
-             .FirstOrDefault(c => c.Provider.GetName() == providerName);
+             .FirstOrDefault(c => c.Provider is TProvider);
 
     /// <summary>
     /// Get matched cert by file identify
     /// </summary>
     /// <param name="path">file full name</param>
-    /// <param name="token"></param>
     /// <returns>Found <see cref="DomainInfo"/> or <see langword="null"/></returns>
-    public Task<CertInfo?> GetMatchedCertByDomain(string path, CancellationToken token)
+    public CertInfo? GetMatchedCertByDomain(string path)
     {
         try
         {
-            var cert = X509Certificate2.CreateFromPemFile(Path.Combine(path, options.Value.CertFileName), Path.Combine(path, options.Value.PrivateKeyFileName));
+            var (result, cert, certContent, keyContent) = ReadCertFromPath(path);
             var certName = cert.GetNameInfo(X509NameType.SimpleName, false);
-            var certContent = cert.ExportCertificatePem();
 
             // export success
-            if (cert.TryExportPrivateKeyPem(out var keyContent))
-                return Task.FromResult<CertInfo?>(new()
+            if (result)
+                return new()
                 {
                     CertCommonName = DomainInfo.Parse(certName),
                     CertExpireDate = cert.NotAfter,
@@ -56,18 +58,29 @@ public class LocalCertProvider(
                     PrivateKey = keyContent!,
                     IdentityName = path,
                     Provider = this
-                });
+                };
 
             // export failed
             logger.LogWarning("UnSupport signature algorithm `{oid}`", cert.SignatureAlgorithm);
-            return Task.FromResult<CertInfo?>(null);
+            return null;
         }
         catch (Exception e)
         {
             logger.LogError(e, "An error occured while loading cert.");
         }
 
-        return Task.FromResult<CertInfo?>(null);
+        return null;
+    }
+
+    private (bool, X509Certificate2, string, string?) ReadCertFromPath(string path)
+    {
+        var cert = X509Certificate2.CreateFromPemFile(Path.Combine(path, options.Value.CertFileName), Path.Combine(path, options.Value.PrivateKeyFileName));
+        var certContent = cert.ExportCertificatePem();
+
+        // export success
+        return cert.TryExportPrivateKeyPem(out var keyContent)
+            ? (true, cert, certContent, keyContent)
+            : (false, cert, certContent, keyContent);
     }
 
     public async Task<IList<CertInfo>> GetAllCerts(CancellationToken token)
@@ -84,18 +97,20 @@ public class LocalCertProvider(
         if (options.Value.RecursionSearch)
         {
             var dirList = dir.GetDirectories();
-            await Parallel.ForEachAsync(dirList, token, async (subDir, innerToken) =>
-                await GetAllCertsCore(subDir, list.Add, innerToken));
+            Parallel.ForEach(dirList, (subDir, _) =>
+            {
+                GetAllCertsCore(subDir, list.Add);
+            });
         }
         else
         {
-            await GetAllCertsCore(dir, list.Add, token);
+            GetAllCertsCore(dir, list.Add);
         }
 
         return list;
     }
 
-    private async ValueTask GetAllCertsCore(DirectoryInfo dir, Action<CertInfo> invoked, CancellationToken token)
+    private void GetAllCertsCore(DirectoryInfo dir, Action<CertInfo> invoked)
     {
         var certFile = dir.GetFiles(options.Value.CertFileName);
         var privateFile = dir.GetFiles(options.Value.PrivateKeyFileName);
@@ -108,7 +123,7 @@ public class LocalCertProvider(
 
         logger.LogDebug("Found cert file `{cert}` and key file `{key}`.", certFile[0].FullName, privateFile[0].FullName);
 
-        var cert = await GetMatchedCertByDomain(dir.FullName, token);
+        var cert = GetMatchedCertByDomain(dir.FullName);
 
         if (cert is null)
         {

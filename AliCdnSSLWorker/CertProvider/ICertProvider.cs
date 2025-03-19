@@ -11,10 +11,7 @@ public interface ICertProvider
 
     public Task<CertInfo?> GetMatchedCertByDomain(DomainInfo domain, CancellationToken token);
 
-    public Task<CertInfo?> GetMatchedCertByDomain(string identify)
-        => GetMatchedCertByDomain(identify, CancellationToken.None);
-
-    public Task<CertInfo?> GetMatchedCertByDomain(string identify, CancellationToken token);
+    public CertInfo? GetMatchedCertByDomain(string identify, CancellationToken token);
 
     public Task<IList<CertInfo>> GetAllCerts()
         => GetAllCerts(CancellationToken.None);
