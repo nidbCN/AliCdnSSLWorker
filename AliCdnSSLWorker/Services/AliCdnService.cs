@@ -49,10 +49,12 @@ public class AliCdnService
             // Request success
             if (resp.StatusCode == 200)
             {
+
                 infos = resp.Body.CertInfos.CertInfo.Select(c => new RemoteCertInfo
                 {
-                    CertExpireDate = DateTime.Parse(c.CertExpireTime),
+                    CdnDomainName = DomainInfo.Parse(c.DomainName),
                     CertCommonName = DomainInfo.Parse(c.CertCommonName),
+                    CertExpireDate = DateTime.Parse(c.CertExpireTime),
                 });
 
                 return true;
@@ -78,7 +80,7 @@ public class AliCdnService
         var req = new SetCdnDomainSSLCertificateRequest
         {
             DomainName = domain,
-            CertName = $"autoupdate_{domain}_{DateTime.Now.ToShortDateString()}",
+            CertName = $"autoupdate_{domain}_{DateTime.Now:s}",
             CertType = "upload",
             SSLProtocol = "on",
             SSLPub = certInfo.FullChain,
@@ -118,18 +120,18 @@ public class AliCdnService
             if (!matched.Invoke(remoteCert))
                 continue;
 
-            _logger.LogInformation("Remote cert `{cn}` will expire at {date:g}. Upload local cert.", remoteCert.CertCommonName, remoteCert.CertExpireDate);
+            _logger.LogInformation("Remote cert `{cn}` for domain `{domain}` will expire at {date:g}. Upload local cert.", remoteCert.CertCommonName, remoteCert.CdnDomainName, remoteCert.CertExpireDate);
 
-            if (_certService.TryGetCertByDomain(remoteCert.CertCommonName, out var localCert, force))
+            if (_certService.TryGetCertByDomain(remoteCert.CdnDomainName, out var localCert, force))
             {
-                if (TryUploadCert(remoteCert.CertCommonName.OriginString, localCert!))
-                    _logger.LogInformation("Success upload cert for `{domain}`.", remoteCert.CertCommonName);
+                if (TryUploadCert(remoteCert.CdnDomainName.OriginString, localCert!))
+                    _logger.LogInformation("Success upload cert for `{domain}`.", remoteCert.CdnDomainName);
                 else
-                    _logger.LogWarning("Failed upload cert for `{domain}`, skip.", remoteCert.CertCommonName);
+                    _logger.LogWarning("Failed upload cert for `{domain}`, skip.", remoteCert.CdnDomainName);
             }
             else
             {
-                _logger.LogWarning("Can not found cert for `{cn}`, skip.", remoteCert.CertCommonName);
+                _logger.LogWarning("Can not found cert for `{cn}`, skip.", remoteCert.CdnDomainName);
             }
         }
 

@@ -1,4 +1,5 @@
-﻿using AliCdnSSLWorker.CertProvider;
+﻿using System.Text.Json;
+using AliCdnSSLWorker.CertProvider;
 using AliCdnSSLWorker.Configs;
 using AliCdnSSLWorker.Models;
 using Microsoft.Extensions.Options;
@@ -54,6 +55,8 @@ public class CertService
                 var name = cert.CertCommonName.ToString();
                 if (cert.CertCommonName.IsWildcard())
                 {
+                    _logger.LogDebug("Cert with CN {cn} is wildcard, add to wildcard cache.", cert.CertCommonName);
+
                     var certInList = _wildcardCertList
                         .FirstOrDefault(c => c.CertCommonName.ToString() == name);
 
@@ -64,6 +67,7 @@ public class CertService
                 }
                 else
                 {
+                    _logger.LogDebug("Cert with CN {cn} is not wildcard, add to normal cache.", cert.CertCommonName);
                     _normalCertDict[name] = cert;
                 }
             }
@@ -91,6 +95,8 @@ public class CertService
         if (forceUpdate)
             LoadAllAsync(CancellationToken.None).GetAwaiter().GetResult();
 
+        _logger.LogDebug("Search cert for domain {d}, force {f}", domain, forceUpdate);
+
         // full-matched
         return _normalCertDict.TryGetValue(domain.ToString(), out result) ||
                // wildcard matched
@@ -99,11 +105,34 @@ public class CertService
 
     private bool TryGetWildcardCert(DomainInfo domain, out CertInfo? result)
     {
-        (_, result) = _wildcardCertList
-            .Select(c => (c.CertCommonName.MatchedCount(domain), c))
-            .Where(t => t.Item1 > 0)
-            .MaxBy(t => t.Item1);
+        if (_logger.IsEnabled(LogLevel.Debug))
+        {
+            _logger.LogDebug("Try search wildcard cert for {d} from list.", domain);
+            _logger.LogDebug("Wildcard cache list: {list}", JsonSerializer.Serialize(_wildcardCertList));
+        }
 
-        return result is not null;
+        var maxMatchIndex = -1;
+        var maxMatch = -1;
+
+        for (var i = 0; i < _wildcardCertList.Count; i++)
+        {
+            var thisMatch = _wildcardCertList[i]
+                .CertCommonName
+                .MatchedCount(domain);
+
+            if (thisMatch <= maxMatch) continue;
+
+            maxMatch = thisMatch;
+            maxMatchIndex = i;
+        }
+
+        if (maxMatch <= 0)
+        {
+            result = null;
+            return false;
+        }
+
+        result = _wildcardCertList[maxMatchIndex];
+        return true;
     }
 }
