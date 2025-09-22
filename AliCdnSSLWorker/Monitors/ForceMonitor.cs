@@ -23,14 +23,34 @@ public class ForceMonitor(
              var ip = monitorOptions.Value.GetIpAddress().ToString();
              var port = monitorOptions.Value.Port;
 
-             logger.LogInformation("Start api listen on {ip}:{port}.", ip, port);
 
              if (monitorOptions.Value.GetIpAddress().Equals(IPAddress.Any))
                  ip = "+";
 
              listener.Prefixes.Add($"http://{ip}:{port}/force_refresh/");
-
-             listener.Start();
+             try
+             {
+                 listener.Start();
+             }
+             catch (HttpListenerException ex)
+             {
+                 if (ex.ErrorCode == 5) // Access denied
+                 {
+                     if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+                         logger.LogError($"Administrator privileges required to register URL! Please run as administrator: netsh http add urlacl url=http://{ip}:{port}/ user=Everyone");
+                     else
+                         logger.LogError($"Administrator privileges required to register URL!");
+                 }
+                 else if (ex.ErrorCode == 32) // Port is occupied!
+                 {
+                     logger.LogError("Port is occupied!");
+                 }
+                 return;
+             }
+             finally
+             {
+                 logger.LogInformation("Start api listen on {ip}:{port}.", ip, port);
+             }
 
              while (!stoppingToken.IsCancellationRequested)
              {
