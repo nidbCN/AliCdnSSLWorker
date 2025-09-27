@@ -16,17 +16,18 @@ public class ForceMonitor(
     public bool TryUpdateAll()
         => aliCdnService.TryUploadAllCert(r => true);
 
-    private JsonSerializerOptions _jso = new JsonSerializerOptions
+    private JsonSerializerOptions _jsonOption = new()
     {
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    private void GetNotFoundResponse(HttpListenerResponse resp)
+    private static void GetNotFoundResponse(HttpListenerResponse resp)
     {
         resp.StatusCode = (int)HttpStatusCode.NotFound;
     }
-    private void GetDefaultResponse(HttpListenerResponse resp)
+
+    private static void GetDefaultResponse(HttpListenerResponse resp)
     {
         string responseString = "HTTP Service is running successfully!";
         byte[] buffer = Encoding.UTF8.GetBytes(responseString);
@@ -62,15 +63,13 @@ public class ForceMonitor(
                 resp.StatusDescription = "Certificates not found";
                 return;
             }
-            var json = JsonSerializer.Serialize(infos, _jso);
+            var json = JsonSerializer.Serialize(infos, _jsonOption);
             resp.ContentType = "application/json";
             resp.ContentEncoding = Encoding.UTF8;
             resp.StatusCode = (int)HttpStatusCode.OK;
 
-            using (var writer = new StreamWriter(resp.OutputStream, Encoding.UTF8))
-            {
-                writer.Write(json);
-            }
+            using var writer = new StreamWriter(resp.OutputStream, Encoding.UTF8);
+            writer.Write(json);
         }
         catch (Exception e)
         {
@@ -80,67 +79,63 @@ public class ForceMonitor(
         }
     }
 
-    protected override Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        return Task.Run(() =>
-         {
-             using var listener = new HttpListener();
+        using var listener = new HttpListener();
 
-             var ip = monitorOptions.Value.GetIpAddress().ToString();
-             var port = monitorOptions.Value.Port;
+        var ip = monitorOptions.Value.GetIpAddress().ToString();
+        var port = monitorOptions.Value.Port;
 
+        if (monitorOptions.Value.GetIpAddress().Equals(IPAddress.Any))
+            ip = "+";
 
-             if (monitorOptions.Value.GetIpAddress().Equals(IPAddress.Any))
-                 ip = "+";
+        listener.Prefixes.Add($"http://{ip}:{port}/");
 
-             listener.Prefixes.Add($"http://{ip}:{port}/");
+        try
+        {
+            listener.Start();
+        }
+        catch (HttpListenerException ex)
+        {
+            if (ex.ErrorCode == 5) // Access denied
+            {
+                if (Environment.OSVersion.Platform == PlatformID.Win32NT)
+                    logger.LogError($"Administrator privileges required to register URL! Please run as administrator: netsh http add urlacl url=http://{ip}:{port}/ user=Everyone");
+                else
+                    logger.LogError($"Administrator privileges required to register URL!");
+            }
+            else if (ex.ErrorCode == 32) // Port is occupied!
+            {
+                logger.LogError("Port is occupied!");
+            }
+            return;
+        }
+        finally
+        {
+            logger.LogInformation("Start api listen on {ip}:{port}.", ip, port);
+        }
 
-             try
-             {
-                 listener.Start();
-             }
-             catch (HttpListenerException ex)
-             {
-                 if (ex.ErrorCode == 5) // Access denied
-                 {
-                     if (Environment.OSVersion.Platform == PlatformID.Win32NT)
-                         logger.LogError($"Administrator privileges required to register URL! Please run as administrator: netsh http add urlacl url=http://{ip}:{port}/ user=Everyone");
-                     else
-                         logger.LogError($"Administrator privileges required to register URL!");
-                 }
-                 else if (ex.ErrorCode == 32) // Port is occupied!
-                 {
-                     logger.LogError("Port is occupied!");
-                 }
-                 return;
-             }
-             finally
-             {
-                 logger.LogInformation("Start api listen on {ip}:{port}.", ip, port);
-             }
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            var ctx = await listener.GetContextAsync();
+            using var resp = ctx.Response;
+            switch (ctx.Request.RawUrl)
+            {
+                case "/certs":
+                    GetCertsResponse(resp);
+                    break;
+                case "/force_refresh":
+                    GetForceRefreshResponse(resp);
+                    break;
+                case "/":
+                    GetDefaultResponse(resp);
+                    break;
+                default:
+                    GetNotFoundResponse(resp);
+                    break;
+            }
 
-             while (!stoppingToken.IsCancellationRequested)
-             {
-                 var ctx = listener.GetContext();
-                 using var resp = ctx.Response;
-                 switch (ctx.Request.RawUrl)
-                 {
-                     case "/certs":
-                         GetCertsResponse(resp);
-                         break;
-                     case "/force_refresh":
-                         GetForceRefreshResponse(resp);
-                         break;
-                     case "/":
-                         GetDefaultResponse(resp);
-                         break;
-                     default:
-                         GetNotFoundResponse(resp);
-                         break;
-                 }
-
-                 resp.Close();
-             }
-         }, stoppingToken);
+            resp.Close();
+        }
     }
 }

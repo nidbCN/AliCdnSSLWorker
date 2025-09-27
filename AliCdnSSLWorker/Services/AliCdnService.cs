@@ -49,7 +49,6 @@ public class AliCdnService
             // Request success
             if (resp.StatusCode == 200)
             {
-
                 infos = resp.Body.CertInfos.CertInfo.Select(c => new RemoteCertInfo
                 {
                     CdnDomainName = DomainInfo.Parse(c.DomainName),
