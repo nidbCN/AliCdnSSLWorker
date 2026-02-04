@@ -78,12 +78,11 @@ public class LocalCertProvider(
         var certFileContent = await certFileContentTask;
 
         var cert = X509Certificate2.CreateFromPem(certFileContent, keyFileContent);
-        var certContent = cert.ExportCertificatePem();
 
         // export success
         return cert.TryExportPrivateKeyPem(out var keyContent)
-            ? (true, cert, certContent, keyContent)
-            : (false, cert, certContent, keyContent);
+            ? (true, cert, certFileContent, keyContent)
+            : (false, cert, certFileContent, keyContent);
     }
 
     public async Task<IList<CertInfo>> GetAllCerts(CancellationToken token)
